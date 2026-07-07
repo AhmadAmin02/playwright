@@ -16,6 +16,8 @@ router.get("/", async (req, res, next) => {
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
+    page.on("console", msg => console.log(msg.text()));
+    page.on("pageerror", err => console.log(err));
     
     await page.setViewport({ width: 854, height: 480 });
     const { id } = await startRecording(page, { fps: 12, width: 854, height: 480 });
