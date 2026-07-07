@@ -25,7 +25,7 @@ router.get("/", async (req, res, next) => {
       timeout: 0,
     });
     
-    await scrollToText(page, "Generate Transcript");
+    await scrollToText(page, "Video URL");
     
     if (json) {
       const text = await page.evaluate(() => document.body.innerText);
@@ -39,6 +39,7 @@ router.get("/", async (req, res, next) => {
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
     console.log(token);
+    await new Promise(resolve => setTimeout(resolve, 20000));
     const { path: videoPath } = await stopRecording(id);
     const fullUrl = `${req.protocol}://${req.get("host")}${videoPath}`;
     res.status(200).json({ token, video: fullUrl });
