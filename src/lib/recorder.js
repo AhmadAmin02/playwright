@@ -67,20 +67,17 @@ function resolveVideo(fileName) {
   return fs.existsSync(filePath) ? filePath : null;
 }
 
-async function scrollToText(page, text, opts = {}) {
-  const found = await page.evaluate((text, block) => {
-    const el = [...document.querySelectorAll("*")].find((n) =>
-      n.textContent?.trim().includes(text)
-    );
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block });
-      return true;
-    }
-    return false;
-  }, text, opts.block || "center");
+async function scrollToElement(page, selector, opts = {}) {
+  // tunggu elemennya muncul dulu (biar nggak error kalau lazy-load)
+  await page.waitForSelector(selector, { timeout: opts.timeout || 10000 });
   
-  if (!found) throw new Error(`Elemen dengan teks "${text}" tidak ketemu`);
+  await page.evaluate((selector, block) => {
+    const el = document.querySelector(selector);
+    if (el) el.scrollIntoView({ behavior: "smooth", block });
+  }, selector, opts.block || "center"); // "start" | "center" | "end"
+  
+  // kasih jeda biar animasi scroll-nya kerekam
   await new Promise((r) => setTimeout(r, opts.delay || 1200));
 }
 
-module.exports = { startRecording, stopRecording, resolveVideo, DELETE_AFTER_MS, scrollToText };
+module.exports = { startRecording, stopRecording, resolveVideo, DELETE_AFTER_MS, scrollToElement };

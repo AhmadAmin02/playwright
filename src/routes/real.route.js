@@ -3,7 +3,7 @@
 const express = require("express");
 const { getRealBrowser } = require("../lib/realBrowser");
 const config = require("../config");
-const { startRecording, stopRecording, scrollToText } = require("../lib/recorder");
+const { startRecording, stopRecording, scrollToElement } = require("../lib/recorder");
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ router.get("/", async (req, res, next) => {
       timeout: 0,
     });
     
-    await scrollToText(page, "Video URL");
+    await scrollToElement(page, ".credits", { block: "center" });
     
     if (json) {
       const text = await page.evaluate(() => document.body.innerText);
