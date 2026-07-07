@@ -34,10 +34,11 @@ router.get("/", async (req, res, next) => {
       return res.status(200).json({ data });
     }
     
-    await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
+    /*await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
-    );
+    );*/
+    const token = "memek";
     console.log(token);
     await new Promise(resolve => setTimeout(resolve, 20000));
     const { path: videoPath } = await stopRecording(id);
