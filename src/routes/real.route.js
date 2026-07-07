@@ -24,13 +24,8 @@ router.get("/", async (req, res, next) => {
       waitUntil: "domcontentloaded",
       timeout: 0,
     });
-    const frames = page.frames();
     
-    for (const frame of frames) {
-      console.log(frame.url());
-    }
-    
-    await scrollToElement(page, 'iframe', { block: "center" });
+    await scrollToElement(page, '#form-field-language', { block: "center" });
     
     if (json) {
       const text = await page.evaluate(() => document.body.innerText);
@@ -43,6 +38,11 @@ router.get("/", async (req, res, next) => {
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );*/
+    const frames = page.frames();
+    
+    for (const frame of frames) {
+      console.log(frame.url());
+    }
     await page.waitForSelector('iframe[src*="turnstile"]');
     
     const frame = page.frames().find(f =>
