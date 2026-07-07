@@ -33,17 +33,17 @@ router.get("/", async (req, res, next) => {
       timeout: 30000
     });
     //await new Promise(resolve => setTimeout(resolve, 5000));
-    /*await page.evaluate(() => {
+    await page.evaluate(() => {
       const iframe = document.querySelector('.taku_box-iframe');
       if (iframe) iframe.remove();
     });
-    const { path: shotPath } = await takeScreenshot(page);*/
+    const { path: shotPath } = await takeScreenshot(page);
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
-    /*const { path: videoPath } = await stopRecording(id);
-    const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;*/
-    res.status(200).json({ token });
+    /*const { path: videoPath } = await stopRecording(id);*/
+    const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
+    res.status(200).json({ token, fullUrl });
   } catch (err) {
     next(err);
   } finally {
