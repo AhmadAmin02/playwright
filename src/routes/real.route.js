@@ -36,7 +36,7 @@ router.get("/", async (req, res, next) => {
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
     console.log(token);
-    const { path: videoPath } = stopRecording(id);
+    const { path: videoPath } = await stopRecording(id);
     const fullUrl = `${req.protocol}://${req.get("host")}${videoPath}`;
     res.status(200).json({ token, video: fullUrl });
   } catch (err) {
