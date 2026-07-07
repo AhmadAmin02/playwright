@@ -1,7 +1,7 @@
 {
   "name": "scraper-api",
   "version": "1.0.0",
-  "description": "REST API scraper: got (HTTP/2) + Playwright fallback",
+  "description": "REST API scraper: got (HTTP/2) + Playwright + puppeteer-real-browser",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -13,6 +13,7 @@
   "dependencies": {
     "express": "^4.19.2",
     "got": "^11.8.6",
-    "playwright": "1.61.1"
+    "playwright": "1.61.1",
+    "puppeteer-real-browser": "^1.4.2"
   }
 }
