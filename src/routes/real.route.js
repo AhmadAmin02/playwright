@@ -17,7 +17,7 @@ router.get("/", async (req, res, next) => {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
     
-    await page.setViewport({ width: 854, height: 480 });
+    await page.setViewport({ width: 360, height: 704 });
     //const { id } = await startRecording(page, { fps: 12, width: 854, height: 480 });
     
     await page.goto(url, {
@@ -33,11 +33,11 @@ router.get("/", async (req, res, next) => {
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
       return res.status(200).json({ data });
     }
+    await new Promise(resolve => setTimeout(resolve, 10000));
     await page.evaluate(() => {
       const iframe = document.querySelector('.taku_box-iframe');
       if (iframe) iframe.remove();
     });
-    await new Promise(resolve => setTimeout(resolve, 10000));
     const { path: shotPath } = await takeScreenshot(page);
     await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
