@@ -43,7 +43,7 @@ router.get("/", async (req, res, next) => {
     for (const frame of frames) {
       console.log(frame.url());
     }
-    await page.waitForSelector('iframe[src*="turnstile"]');
+    /*await page.waitForSelector('iframe[src*="turnstile"]');
     
     const frame = page.frames().find(f =>
       f.url().includes("turnstile")
@@ -53,7 +53,7 @@ router.get("/", async (req, res, next) => {
     
     if (checkbox) {
       await checkbox.click();
-    }
+    }*/
     const token = "memek";
     console.log(token);
     await new Promise(resolve => setTimeout(resolve, 10000));
