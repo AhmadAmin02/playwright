@@ -50,4 +50,17 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+async function scrollToElement(page, selector, opts = {}) {
+  // tunggu elemennya muncul dulu (biar nggak error kalau lazy-load)
+  await page.waitForSelector(selector, { timeout: opts.timeout || 10000 });
+  
+  await page.evaluate((selector, block) => {
+    const el = document.querySelector(selector);
+    if (el) el.scrollIntoView({ behavior: "smooth", block });
+  }, selector, opts.block || "center"); // "start" | "center" | "end"
+  
+  // kasih jeda biar animasi scroll-nya kerekam
+  await new Promise((r) => setTimeout(r, opts.delay || 1200));
+}
+
 module.exports = router;
