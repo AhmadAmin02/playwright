@@ -8,10 +8,12 @@ const healthRoute = require("./health.route");
 const jsonRoute = require("./json.route");
 const scrapeRoute = require("./scrape.route");
 const realRoute = require("./real.route");
+const videoRoute = require("./video.route");
 
 const router = express.Router();
 
 router.use("/health", healthRoute);
+router.use("/videos", videoRoute);
 
 // Jalur ringan — selalu aktif
 router.use("/api/json", apiKey, jsonRoute);

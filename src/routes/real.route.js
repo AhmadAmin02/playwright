@@ -3,6 +3,7 @@
 const express = require("express");
 const { getRealBrowser } = require("../lib/realBrowser");
 const config = require("../config");
+const { startRecording, stopRecording } = require("../lib/recorder");
 
 const router = express.Router();
 
@@ -16,6 +17,8 @@ router.get("/", async (req, res, next) => {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
     
+    const { id } = await startRecording(page);
+    
     await page.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: 0,
@@ -27,13 +30,15 @@ router.get("/", async (req, res, next) => {
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
       return res.status(200).json({ data });
     }
-    console.log(await page.url());
     
     await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
-    res.status(200).json({ token });
+    console.log(token);
+    const { path: videoPath } = stopRecording(id);
+    const fullUrl = `${req.protocol}://${req.get("host")}${videoPath}`;
+    res.status(200).json({ token, video: fullUrl });
   } catch (err) {
     next(err);
   } finally {
