@@ -18,7 +18,7 @@ router.get("/", async (req, res, next) => {
     
     await page.goto(url, {
       waitUntil: "domcontentloaded",
-      timeout: config.requestTimeout,
+      timeout: 0,
     });
     
     if (json) {
@@ -27,6 +27,7 @@ router.get("/", async (req, res, next) => {
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
       return res.status(200).json({ data });
     }
+    console.log(await page.url());
     
     await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
