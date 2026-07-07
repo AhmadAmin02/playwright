@@ -28,8 +28,11 @@ router.get("/", async (req, res, next) => {
       return res.status(200).json({ data });
     }
     
-    const html = await page.content();
-    res.status(200).json({ html });
+    await page.waitForSelector('[name="cf-response"]', { timeout: 30000 });
+    const token = await page.evaluate(() =>
+      document.querySelector('[name="cf-response"]')?.value ?? null
+    );
+    res.status(200).json({ token });
   } catch (err) {
     next(err);
   } finally {
