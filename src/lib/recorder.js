@@ -67,4 +67,20 @@ function resolveVideo(fileName) {
   return fs.existsSync(filePath) ? filePath : null;
 }
 
-module.exports = { startRecording, stopRecording, resolveVideo, DELETE_AFTER_MS };
+async function scrollToText(page, text, opts = {}) {
+  const found = await page.evaluate((text, block) => {
+    const el = [...document.querySelectorAll("*")].find((n) =>
+      n.textContent?.trim().includes(text)
+    );
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block });
+      return true;
+    }
+    return false;
+  }, text, opts.block || "center");
+  
+  if (!found) throw new Error(`Elemen dengan teks "${text}" tidak ketemu`);
+  await new Promise((r) => setTimeout(r, opts.delay || 1200));
+}
+
+module.exports = { startRecording, stopRecording, resolveVideo, DELETE_AFTER_MS, scrollToText };

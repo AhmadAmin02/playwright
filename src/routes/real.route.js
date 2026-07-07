@@ -3,7 +3,7 @@
 const express = require("express");
 const { getRealBrowser } = require("../lib/realBrowser");
 const config = require("../config");
-const { startRecording, stopRecording } = require("../lib/recorder");
+const { startRecording, stopRecording, scrollToText } = require("../lib/recorder");
 
 const router = express.Router();
 
@@ -24,6 +24,8 @@ router.get("/", async (req, res, next) => {
       waitUntil: "domcontentloaded",
       timeout: 0,
     });
+    
+    await scrollToText(page, "Generate Transcript");
     
     if (json) {
       const text = await page.evaluate(() => document.body.innerText);
