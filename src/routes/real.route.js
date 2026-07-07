@@ -26,18 +26,21 @@ router.get("/", async (req, res, next) => {
     });
     
     await scrollToElement(page, '#form-field-language', { block: "center" });
-    
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[name="cf-turnstile-response"]');
+      return el && el.value.length > 0;
+    }, {
+      timeout: 30000
+    });
+    //await new Promise(resolve => setTimeout(resolve, 5000));
     await page.evaluate(() => {
       const iframe = document.querySelector('.taku_box-iframe');
       if (iframe) iframe.remove();
     });
     const { path: shotPath } = await takeScreenshot(page);
-    await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
-    console.log(token);
     /*const { path: videoPath } = await stopRecording(id);*/
     const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
     res.status(200).json({ token, fullUrl });
