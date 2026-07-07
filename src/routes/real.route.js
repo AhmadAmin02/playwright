@@ -9,7 +9,7 @@ const router = express.Router();
 
 // GET /api/real?url=https://...&json=1
 router.get("/", async (req, res, next) => {
-  const { url, json } = req.query;
+  const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
   
   let page;
@@ -27,26 +27,20 @@ router.get("/", async (req, res, next) => {
     
     await scrollToElement(page, '#form-field-language', { block: "center" });
     
-    if (json) {
-      const text = await page.evaluate(() => document.body.innerText);
-      let data;
-      try { data = JSON.parse(text); } catch { data = { raw: text }; }
-      return res.status(200).json({ data });
-    }
-    //await new Promise(resolve => setTimeout(resolve, 10000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
     await page.evaluate(() => {
       const iframe = document.querySelector('.taku_box-iframe');
       if (iframe) iframe.remove();
     });
-    //const { path: shotPath } = await takeScreenshot(page);
+    const { path: shotPath } = await takeScreenshot(page);
     await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
     console.log(token);
     /*const { path: videoPath } = await stopRecording(id);*/
-    //const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
-    res.status(200).json({ token });
+    const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
+    res.status(200).json({ token, fullUrl });
   } catch (err) {
     next(err);
   } finally {
