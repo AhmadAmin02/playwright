@@ -24,8 +24,13 @@ router.get("/", async (req, res, next) => {
       waitUntil: "domcontentloaded",
       timeout: 0,
     });
+    const frames = page.frames();
     
-    await scrollToElement(page, 'iframe[src*="challenges.cloudflare.com"]', { block: "center" });
+    for (const frame of frames) {
+      console.log(frame.url());
+    }
+    
+    await scrollToElement(page, 'iframe', { block: "center" });
     
     if (json) {
       const text = await page.evaluate(() => document.body.innerText);
