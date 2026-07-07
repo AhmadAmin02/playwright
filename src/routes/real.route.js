@@ -33,6 +33,10 @@ router.get("/", async (req, res, next) => {
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
       return res.status(200).json({ data });
     }
+    await page.evaluate(() => {
+      const iframe = document.querySelector('.taku_box-iframe');
+      if (iframe) iframe.remove();
+    });
     await new Promise(resolve => setTimeout(resolve, 10000));
     const { path: shotPath } = await takeScreenshot(page);
     await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
