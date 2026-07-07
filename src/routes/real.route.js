@@ -16,11 +16,9 @@ router.get("/", async (req, res, next) => {
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
-    page.on("console", msg => console.log(msg.text()));
-    page.on("pageerror", err => console.log(err));
     
     await page.setViewport({ width: 854, height: 480 });
-    const { id } = await startRecording(page, { fps: 12, width: 854, height: 480 });
+    //const { id } = await startRecording(page, { fps: 12, width: 854, height: 480 });
     
     await page.goto(url, {
       waitUntil: "domcontentloaded",
@@ -35,33 +33,15 @@ router.get("/", async (req, res, next) => {
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
       return res.status(200).json({ data });
     }
-    
-    /*await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    await page.waitForSelector('[name="cf-turnstile-response"]', { timeout: 30000 });
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
-    );*/
-    const frames = page.frames();
-    
-    for (const frame of frames) {
-      console.log(frame.url());
-    }
-    /*await page.waitForSelector('iframe[src*="turnstile"]');
-    
-    const frame = page.frames().find(f =>
-      f.url().includes("turnstile")
     );
-    
-    const checkbox = await frame.$('input[type="checkbox"]');
-    
-    if (checkbox) {
-      await checkbox.click();
-    }*/
-    const token = "memek";
     console.log(token);
-    await new Promise(resolve => setTimeout(resolve, 10000));
-    const { path: videoPath } = await stopRecording(id);
-    const fullUrl = `${req.protocol}://${req.get("host")}${videoPath}`;
-    res.status(200).json({ token, video: fullUrl });
+    /*const { path: videoPath } = await stopRecording(id);
+    const fullUrl = `${req.protocol}://${req.get("host")}${videoPath}`;*/
+    res.status(200).json({ token });
   } catch (err) {
     next(err);
   } finally {
