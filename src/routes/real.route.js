@@ -27,6 +27,7 @@ router.get("/", async (req, res, next) => {
     });
     
     await scrollToElement(page, '#form-field-language', { block: "center" });
+    const { path: shotPath } = await takeScreenshot(page);
     await page.waitForFunction(() => {
       const el = document.querySelector('[name="cf-turnstile-response"]');
       return el && el.value.length > 0;
@@ -37,11 +38,11 @@ router.get("/", async (req, res, next) => {
     /*await page.evaluate(() => {
       const iframe = document.querySelector('.taku_box-iframe');
       if (iframe) iframe.remove();
-    });
-    const { path: shotPath } = await takeScreenshot(page);*/
+    });*/
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );
+    console.log(shotPath);
     console.log(token);
     const { body } = await got.post("https://tubepilot.ai/wp-admin/admin-ajax.php", {
       form: {
