@@ -17,7 +17,8 @@ router.get("/", async (req, res, next) => {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
     
-    const { id } = await startRecording(page);
+    await page.setViewport({ width: 854, height: 480 });
+    const { id } = await startRecording(page, { fps: 12, width: 854, height: 480 });
     
     await page.goto(url, {
       waitUntil: "domcontentloaded",
