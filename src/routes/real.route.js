@@ -25,7 +25,7 @@ router.get("/", async (req, res, next) => {
       timeout: 0,
     });
     
-    await scrollToElement(page, ".credits", { block: "center" });
+    await scrollToElement(page, 'iframe[src*="challenges.cloudflare.com"]', { block: "center" });
     
     if (json) {
       const text = await page.evaluate(() => document.body.innerText);
@@ -38,9 +38,20 @@ router.get("/", async (req, res, next) => {
     const token = await page.evaluate(() =>
       document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
     );*/
+    await page.waitForSelector('iframe[src*="turnstile"]');
+    
+    const frame = page.frames().find(f =>
+      f.url().includes("turnstile")
+    );
+    
+    const checkbox = await frame.$('input[type="checkbox"]');
+    
+    if (checkbox) {
+      await checkbox.click();
+    }
     const token = "memek";
     console.log(token);
-    await new Promise(resolve => setTimeout(resolve, 20000));
+    await new Promise(resolve => setTimeout(resolve, 10000));
     const { path: videoPath } = await stopRecording(id);
     const fullUrl = `${req.protocol}://${req.get("host")}${videoPath}`;
     res.status(200).json({ token, video: fullUrl });
