@@ -33,7 +33,7 @@ router.get("/", async (req, res, next) => {
       const el = document.querySelector('[name="cf-turnstile-response"]');
       return el && el.value.length > 0;
     }, {
-      timeout: 30000
+      timeout: 60000
     });
     //await new Promise(resolve => setTimeout(resolve, 5000));
     /*await page.evaluate(() => {

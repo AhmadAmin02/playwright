@@ -5,7 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const SHOT_DIR = "/tmp/shots";
-const DELETE_AFTER_MS = 60 * 1000; // hapus 1 menit setelah dibuat
+const DELETE_AFTER_MS = 120 * 1000; // hapus 1 menit setelah dibuat
 
 fs.mkdirSync(SHOT_DIR, { recursive: true });
 
