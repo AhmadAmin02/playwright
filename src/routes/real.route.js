@@ -98,7 +98,7 @@ router.get("/", async (req, res, next) => {
 
     // ===== LOOP KLIK + SCREENSHOT tiap attempt =====
     const shots = [];
-    const MAX_CLICK = 5;
+    const MAX_CLICK = 15;
     let token = await getToken();
     let clickMethod = token ? "none (auto-solve)" : "";
 
