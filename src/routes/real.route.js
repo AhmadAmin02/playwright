@@ -17,6 +17,13 @@ router.get("/", async (req, res, next) => {
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     const link = `https://amprem.irfanjawa.com/`;
+    page.on("console", msg => console.log(msg.text()));
+    
+    page.on("response", res => {
+      if (res.url().includes("challenge")) {
+        console.log(res.status(), res.url());
+      }
+    });
     await page.goto(link, { waitUntil: "domcontentloaded", timeout: 60000 });
     
     /*while (!page.url().includes("dashboard")) {
