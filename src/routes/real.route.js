@@ -37,7 +37,7 @@ router.get("/", async (req, res, next) => {
       return el;
     }, { timeout: 60000 });*/
     
-    await new Promise(resolve => setTimeout(resolve, 10000)); // 1 detik
+    await new Promise(resolve => setTimeout(resolve, 15000)); // 1 detik
     await page.evaluate(() => {
       const setValue = (el, value) => {
         const setter = Object.getOwnPropertyDescriptor(
