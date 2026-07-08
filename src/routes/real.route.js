@@ -29,15 +29,15 @@ router.get("/", async (req, res, next) => {
     /*while (!page.url().includes("dashboard")) {
       await new Promise(r => setTimeout(r, 500));
     }*/
-    await page.waitForFunction(() => {
+    /*await page.waitForFunction(() => {
       const el = document.querySelector(
         "body > main > nav > div > div:nth-child(2) > a.btn-primary.text-sm"
       );
       
       return el;
-    }, { timeout: 60000 });
+    }, { timeout: 60000 });*/
     
-    //await new Promise(resolve => setTimeout(resolve, 30000)); // 1 detik
+    await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
     const html = await page.content();
     
     const { path: shotPath } = await takeScreenshot(page);
