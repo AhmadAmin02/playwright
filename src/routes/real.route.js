@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const got = require("got");
 const { getRealBrowser } = require("../lib/realBrowser");
 
 const router = express.Router();
@@ -9,17 +10,17 @@ const router = express.Router();
 router.get("/", async (req, res, next) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
-
+  
   let page;
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
     await page.setViewport({ width: 360, height: 704 });
-
+    
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
-
+    
     await scrollToElement(page, "#form-field-language", { block: "center" });
-
+    
     // buang semua overlay KECUALI Cloudflare
     const killOverlay = () =>
       page.evaluate(() => {
@@ -30,7 +31,7 @@ router.get("/", async (req, res, next) => {
           (el.matches(CF_SEL) ||
             el.querySelector?.(CF_SEL) ||
             el.closest?.(".cf-turnstile"));
-
+        
         document.querySelectorAll("iframe").forEach((f) => {
           if (!isCF(f)) f.remove();
         });
@@ -44,18 +45,17 @@ router.get("/", async (req, res, next) => {
           ) el.remove();
         });
       }).catch(() => {});
-
+    
     await killOverlay();
     const timer = setInterval(() => killOverlay(), 500);
-
+    
     let token = null;
     try {
       await page.waitForFunction(
         () => {
           const el = document.querySelector('[name="cf-turnstile-response"]');
           return el && el.value && el.value.length > 20;
-        },
-        { timeout: 8000, polling: 300 }
+        }, { timeout: 8000, polling: 300 }
       );
       token = await page.evaluate(
         () => document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
@@ -63,9 +63,20 @@ router.get("/", async (req, res, next) => {
     } finally {
       clearInterval(timer);
     }
-
+    
     if (!token) return res.status(504).json({ error: "Token gagal didapat" });
-    res.json({ token });
+    const { body } = await got.post("https://tubepilot.ai/wp-admin/admin-ajax.php", {
+      form: {
+        action: "yt_video_transcript",
+        "form_fields[video_url]": "https://youtu.be/weO-otW4Vvs?si=M5gHYYSCaEmUslVv",
+        "form_fields[include_timestamps]": "no",
+        "form_fields[format_style]": "vtt",
+        "form_fields[language]": "id",
+        "cf-turnstile-response": token
+      }
+    });
+    console.log(body);
+    res.json({ token, body });
   } catch (err) {
     next(err);
   } finally {
