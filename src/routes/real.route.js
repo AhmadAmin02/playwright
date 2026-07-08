@@ -1,7 +1,6 @@
 "use strict";
 
 const express = require("express");
-const got = require("got");
 const { getRealBrowser } = require("../lib/realBrowser");
 const { takeScreenshot } = require("../lib/screenshot");
 
@@ -15,27 +14,41 @@ router.get("/", async (req, res, next) => {
   const log = (t, text) => logs.push({ type: t, text });
   
   let page;
+  
+  // helper: jepret screenshot, aman dipanggil kapan pun
+  const snap = async () => {
+    if (!page) return null;
+    try {
+      const { path: p } = await takeScreenshot(page);
+      return `${req.protocol}://${req.get("host")}${p}`;
+    } catch (e) {
+      log("info", `screenshot gagal: ${e.message}`);
+      return null;
+    }
+  };
+  
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
-    await page.setRequestInterception(true);
-    page.on("request", (r) => {
-      const type = r.resourceType();
-      if (type === "image" || type === "media" || type === "font") return r.abort();
-      r.continue();
-    });
     
     page.on("console", (m) => log(`console.${m.type()}`, m.text()));
     page.on("pageerror", (e) => log("pageerror", e.message));
     
     await page.setViewport({ width: 360, height: 704 });
+    
+    // goto NON-FATAL, waitUntil valid
     await page
-      .goto(url, { waitUntil: "commit", timeout: 60000 })
+      .goto(url, { waitUntil: "domcontentloaded", timeout: 60000 })
       .catch((e) => log("info", `goto: ${e.message}`));
     
-    await scrollToElement(page, "#form-field-language", { block: "center" });
+    // scroll NON-FATAL
+    try {
+      await scrollToElement(page, "#form-field-language", { block: "center" });
+    } catch (e) {
+      log("info", `scroll: ${e.message}`);
+    }
     
-    // bersihin overlay dulu (biar klik nggak kehalang)
+    // bersihin overlay
     const killOverlay = () =>
       page.evaluate(() => {
         const CF = ".cf-turnstile, [name='cf-turnstile-response'], iframe[src*='cloudflare']";
@@ -52,31 +65,27 @@ router.get("/", async (req, res, next) => {
     await killOverlay();
     const overlayTimer = setInterval(killOverlay, 700);
     
-    // tunggu widget-nya ke-render
-    await page.waitForSelector(".cf-turnstile, [data-sitekey]", { timeout: 15000 });
+    // tunggu widget NON-FATAL
+    try {
+      await page.waitForSelector(".cf-turnstile, [data-sitekey]", { timeout: 15000 });
+    } catch (e) {
+      log("info", `widget: ${e.message}`);
+    }
     
-    // fungsi cek token
     const getToken = () =>
-      page.evaluate(
-        () => document.querySelector('[name="cf-turnstile-response"]')?.value || null
-      );
+      page.evaluate(() => document.querySelector('[name="cf-turnstile-response"]')?.value || null);
     
     let token = await getToken();
     let clickMethod = "none (auto-solve)";
     
-    // ==== kalau belum ke-solve, klik manual ====
     if (!token) {
-      // beri sedikit waktu buat auto-solve dulu
       await sleep(3000);
       token = await getToken();
       
       if (!token) {
-        // STRATEGI A: masuk ke iframe Cloudflare, klik checkbox di dalamnya
-        const cfFrame = page
-          .frames()
-          .find((f) => /challenges\.cloudflare\.com/.test(f.url()));
-        log("info", `CF iframe ditemukan: ${!!cfFrame}`);
-        
+        // STRATEGI A: klik di dalam iframe Cloudflare
+        const cfFrame = page.frames().find((f) => /challenges\.cloudflare\.com/.test(f.url()));
+        log("info", `CF iframe: ${!!cfFrame}`);
         if (cfFrame) {
           try {
             await cfFrame.waitForSelector('input[type="checkbox"], label, body', { timeout: 5000 });
@@ -86,17 +95,16 @@ router.get("/", async (req, res, next) => {
               (await cfFrame.$("body"));
             if (target) {
               await target.click();
-              clickMethod = "A: click di dalam iframe CF";
+              clickMethod = "A: klik dalam iframe CF";
               log("info", clickMethod);
             }
           } catch (e) {
             log("info", `Strategi A gagal: ${e.message}`);
           }
         }
-        
         token = await waitToken(getToken, 6000);
         
-        // STRATEGI B: klik pakai KOORDINAT (checkbox ada di kiri widget)
+        // STRATEGI B: klik koordinat
         if (!token) {
           const box = await page.evaluate(() => {
             const el = document.querySelector(".cf-turnstile, [data-sitekey]");
@@ -104,27 +112,23 @@ router.get("/", async (req, res, next) => {
             const r = el.getBoundingClientRect();
             return { x: r.x, y: r.y, w: r.width, h: r.height };
           });
-          log("info", `Bounding box widget: ${JSON.stringify(box)}`);
-          
+          log("info", `box: ${JSON.stringify(box)}`);
           if (box) {
-            // checkbox biasanya di kiri, ~30px dari tepi, vertikal di tengah
             const cx = box.x + 30;
             const cy = box.y + box.h / 2;
-            await page.mouse.move(cx - 5, cy - 5); // gerak dulu biar natural
+            await page.mouse.move(cx - 5, cy - 5);
             await sleep(150);
             await page.mouse.click(cx, cy);
             clickMethod = `B: klik koordinat (${Math.round(cx)}, ${Math.round(cy)})`;
             log("info", clickMethod);
           }
         }
-        
         token = token || (await waitToken(getToken, 8000));
       }
     }
     
     clearInterval(overlayTimer);
     
-    // diag + screenshot buat lihat kondisi
     const diag = await page.evaluate(() => {
       const input = document.querySelector('[name="cf-turnstile-response"]');
       const widget = document.querySelector(".cf-turnstile, [data-sitekey]");
@@ -135,31 +139,19 @@ router.get("/", async (req, res, next) => {
         jumlahIframe: document.querySelectorAll("iframe").length,
         frameUrls: [...document.querySelectorAll("iframe")].map((f) => f.src).slice(0, 5),
       };
-    });
+    }).catch((e) => ({ diagError: e.message }));
     
-    const { path: shotPath } = await takeScreenshot(page);
-    const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
-    const { body } = await got.post("https://tubepilot.ai/wp-admin/admin-ajax.php", {
-      form: {
-        action: "yt_video_transcript",
-        "form_fields[video_url]": "https://youtu.be/weO-otW4Vvs?si=M5gHYYSCaEmUslVv",
-        "form_fields[include_timestamps]": "no",
-        "form_fields[format_style]": "vtt",
-        "form_fields[language]": "id",
-        "cf-turnstile-response": token
-      }
-    });
-    const datas = htmlToJSON(body)
-    res.status(200).json({ token, clickMethod, diag, screenshot: fullUrl, logs, data: datas });
+    const screenshot = await snap();
+    res.status(200).json({ token, clickMethod, diag, screenshot, logs });
   } catch (err) {
     log("fatal", err.message);
-    res.status(500).json({ error: err.message, logs });
+    const screenshot = await snap(); // <-- screenshot WALAU error
+    res.status(500).json({ error: err.message, screenshot, logs });
   } finally {
     if (page) await page.close();
   }
 });
 
-// ===== helpers =====
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function waitToken(getToken, timeout) {
@@ -179,57 +171,6 @@ async function scrollToElement(page, selector, opts = {}) {
     if (el) el.scrollIntoView({ behavior: "smooth", block });
   }, selector, opts.block || "center");
   await sleep(opts.delay || 1000);
-}
-
-function htmlToJSON(html) {
-  html = html
-    .replace(/&gt;/g, ">")
-    .replace(/&lt;/g, "<")
-    .replace(/&amp;/g, "&")
-    .replace(/&#039;/g, "'")
-    .replace(/&quot;/g, '"');
-  
-  const video = html.match(/<strong>\s*Video:\s*<\/strong>\s*([^<]+)/i)?.[1]?.trim() ?? null;
-  const language = html.match(/<strong>\s*Language:\s*<\/strong>\s*([^|<]+)/i)?.[1]?.trim() ?? null;
-  const format = html.match(/<strong>\s*Format:\s*<\/strong>\s*([^<]+)/i)?.[1]?.trim() ?? null;
-  
-  const transcript = html.match(
-    /<div class=['"]transcript-content['"][^>]*>([\s\S]*?)<\/div>/i
-  )?.[1] ?? "";
-  
-  const lines = transcript.trim().split(/\r?\n/);
-  
-  const captions = [];
-  let current = null;
-  
-  for (const line of lines) {
-    const text = line.trim();
-    
-    if (!text || text === "WEBVTT") continue;
-    
-    if (text.includes("-->")) {
-      if (current) captions.push(current);
-      
-      const [start, end] = text.split(/\s*-->\s*/);
-      
-      current = {
-        start,
-        end,
-        text: ""
-      };
-    } else if (current) {
-      current.text += (current.text ? " " : "") + text;
-    }
-  }
-  
-  if (current) captions.push(current);
-  
-  return {
-    video,
-    language,
-    format,
-    captions
-  };
 }
 
 module.exports = router;
