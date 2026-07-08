@@ -18,6 +18,12 @@ router.get("/", async (req, res, next) => {
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on("request", (r) => {
+      const type = r.resourceType();
+      if (type === "image" || type === "media" || type === "font") return r.abort();
+      r.continue();
+    });
     
     page.on("console", (m) => log(`console.${m.type()}`, m.text()));
     page.on("pageerror", (e) => log("pageerror", e.message));
@@ -141,7 +147,8 @@ router.get("/", async (req, res, next) => {
         "cf-turnstile-response": token
       }
     });
-    res.status(200).json({ body, token, clickMethod, diag, screenshot: fullUrl, logs });
+    const datas = htmlToJSON(body)
+    res.status(200).json({ token, clickMethod, diag, screenshot: fullUrl, logs, data: datas });
   } catch (err) {
     log("fatal", err.message);
     res.status(500).json({ error: err.message, logs });
@@ -170,6 +177,57 @@ async function scrollToElement(page, selector, opts = {}) {
     if (el) el.scrollIntoView({ behavior: "smooth", block });
   }, selector, opts.block || "center");
   await sleep(opts.delay || 1000);
+}
+
+function htmlToJSON(html) {
+  html = html
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&")
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"');
+  
+  const video = html.match(/<strong>\s*Video:\s*<\/strong>\s*([^<]+)/i)?.[1]?.trim() ?? null;
+  const language = html.match(/<strong>\s*Language:\s*<\/strong>\s*([^|<]+)/i)?.[1]?.trim() ?? null;
+  const format = html.match(/<strong>\s*Format:\s*<\/strong>\s*([^<]+)/i)?.[1]?.trim() ?? null;
+  
+  const transcript = html.match(
+    /<div class=['"]transcript-content['"][^>]*>([\s\S]*?)<\/div>/i
+  )?.[1] ?? "";
+  
+  const lines = transcript.trim().split(/\r?\n/);
+  
+  const captions = [];
+  let current = null;
+  
+  for (const line of lines) {
+    const text = line.trim();
+    
+    if (!text || text === "WEBVTT") continue;
+    
+    if (text.includes("-->")) {
+      if (current) captions.push(current);
+      
+      const [start, end] = text.split(/\s*-->\s*/);
+      
+      current = {
+        start,
+        end,
+        text: ""
+      };
+    } else if (current) {
+      current.text += (current.text ? " " : "") + text;
+    }
+  }
+  
+  if (current) captions.push(current);
+  
+  return {
+    video,
+    language,
+    format,
+    captions
+  };
 }
 
 module.exports = router;
