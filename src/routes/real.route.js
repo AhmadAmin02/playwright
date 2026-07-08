@@ -19,7 +19,9 @@ router.get("/", async (req, res, next) => {
     const link = `https://amprem.irfanjawa.com/`;
     await page.goto(link, { waitUntil: "domcontentloaded", timeout: 60000 });
     
-    await new Promise(resolve => setTimeout(resolve, 100000)); // 1 detik
+    //if (page.url()) 
+    
+    //await new Promise(resolve => setTimeout(resolve, 100000)); // 1 detik
     const html = await page.content();
     
     
@@ -28,7 +30,7 @@ router.get("/", async (req, res, next) => {
     
     res.json({
       link,
-      html,
+      page: page.url(),
       screenshot
     });
   } catch (err) {
