@@ -30,7 +30,7 @@ router.get("/", async (req, res, next) => {
       await new Promise(r => setTimeout(r, 500));
     }*/
     
-    await new Promise(resolve => setTimeout(resolve, 60000)); // 1 detik
+    await page.waitForSelector("body > main > section.relative.pt-32.pb-20.px-4.overflow-hidden > div.max-w-5xl.mx-auto.text-center.relative > h1 > span.gradient-text");
     const html = await page.content();
     
     const { path: shotPath } = await takeScreenshot(page);
@@ -38,7 +38,7 @@ router.get("/", async (req, res, next) => {
     
     res.json({
       link,
-      page: page.url(),
+      html,
       screenshot
     });
   } catch (err) {
