@@ -38,6 +38,9 @@ router.get("/", async (req, res, next) => {
     }, { timeout: 60000 });*/
     
     await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
+    const { path: shotPath2 } = await takeScreenshot(page);
+    const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath}`;
+    console.log(screenshot2);
     await page.evaluate(() => {
       const setValue = (el, value) => {
         const setter = Object.getOwnPropertyDescriptor(
