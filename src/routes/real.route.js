@@ -52,7 +52,7 @@ router.get("/", async (req, res, next) => {
     
     await page.click('button[type="submit"]');
     const html = await page.content();
-    const result = await page.evaluate(async () => {
+    /*const result = await page.evaluate(async () => {
       const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
         method: "POST",
         headers: {
@@ -65,7 +65,7 @@ router.get("/", async (req, res, next) => {
       });
       
       return await res.json();
-    });
+    });*/
     
     
     const { path: shotPath } = await takeScreenshot(page);
@@ -74,7 +74,7 @@ router.get("/", async (req, res, next) => {
     res.json({
       link,
       screenshot,
-      result
+      result: "ah"
     });
   } catch (err) {
     next(err);
