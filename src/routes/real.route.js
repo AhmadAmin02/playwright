@@ -16,7 +16,7 @@ router.get("/", async (req, res, next) => {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
-    const link = `https://amprem.irfanjawa.com/`;
+    const link = `https://amprem.irfanjawa.com/auth`;
     page.on("console", msg => console.log(msg.text()));
     
     page.on("response", res => {
@@ -38,6 +38,19 @@ router.get("/", async (req, res, next) => {
     }, { timeout: 60000 });*/
     
     await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
+    await page.$eval('input[type="email"]', (el) => {
+      el.value = "sapudinasiktau@gmail.com";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    
+    await page.$eval('input[type="password"]', (el) => {
+      el.value = "asikbanget";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    
+    await page.click('button[type="submit"]');
     const html = await page.content();
     const result = await page.evaluate(async () => {
       const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
