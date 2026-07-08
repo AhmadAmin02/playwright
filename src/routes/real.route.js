@@ -39,7 +39,7 @@ router.get("/", async (req, res, next) => {
     
     await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
     const { path: shotPath2 } = await takeScreenshot(page);
-    const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath}`;
+    const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath2}`;
     console.log(screenshot2);
     await page.evaluate(() => {
       const setValue = (el, value) => {
