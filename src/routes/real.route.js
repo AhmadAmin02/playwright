@@ -55,7 +55,7 @@ router.get("/", async (req, res, next) => {
         () => {
           const el = document.querySelector('[name="cf-turnstile-response"]');
           return el && el.value && el.value.length > 20;
-        }, { timeout: 8000, polling: 300 }
+        }, { timeout: 60000, polling: 300 }
       );
       token = await page.evaluate(
         () => document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
