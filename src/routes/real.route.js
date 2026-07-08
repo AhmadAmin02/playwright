@@ -30,7 +30,7 @@ router.get("/", async (req, res, next) => {
       await new Promise(r => setTimeout(r, 500));
     }*/
     
-    //await new Promise(resolve => setTimeout(resolve, 100000)); // 1 detik
+    await new Promise(resolve => setTimeout(resolve, 60000)); // 1 detik
     const html = await page.content();
     
     const { path: shotPath } = await takeScreenshot(page);
