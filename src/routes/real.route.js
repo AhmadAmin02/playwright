@@ -2,76 +2,52 @@
 
 const express = require("express");
 const { getRealBrowser } = require("../lib/realBrowser");
-const { takeScreenshot } = require("../lib/screenshot");
 
 const router = express.Router();
 
+// GET /api/real?url=https://...
 router.get("/", async (req, res, next) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
 
-  const logs = [];
   let page;
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
-
-    // ===== FULL DEBUG CONSOLE =====
-    page.on("console", (m) => logs.push({ type: `console.${m.type()}`, text: m.text() }));
-    page.on("pageerror", (e) => logs.push({ type: "pageerror", text: e.message }));
-    page.on("requestfailed", (r) =>
-      logs.push({ type: "requestfailed", text: `${r.method()} ${r.url()} — ${r.failure()?.errorText}` })
-    );
-    page.on("response", (r) => {
-      if (r.status() >= 400) logs.push({ type: "response", text: `${r.status()} ${r.url()}` });
-    });
-    // ==============================
-
     await page.setViewport({ width: 360, height: 704 });
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
 
     await scrollToElement(page, "#form-field-language", { block: "center" });
 
-    // ===== OVERLAY KILLER: buang semua overlay KECUALI Cloudflare =====
+    // buang semua overlay KECUALI Cloudflare
     const killOverlay = () =>
       page.evaluate(() => {
-        // penanda: apakah elemen ini bagian dari Cloudflare Turnstile?
         const CF_SEL =
           ".cf-turnstile, [name='cf-turnstile-response'], iframe[src*='challenges.cloudflare.com'], iframe[src*='cloudflare']";
-        const isCloudflare = (el) => {
-          if (!el || !el.matches) return false;
-          if (el.matches(CF_SEL)) return true;               // dia sendiri CF
-          if (el.querySelector && el.querySelector(CF_SEL)) return true; // memuat CF
-          if (el.closest && el.closest(".cf-turnstile")) return true;    // di dalam widget CF
-          return false;
-        };
+        const isCF = (el) =>
+          el?.matches &&
+          (el.matches(CF_SEL) ||
+            el.querySelector?.(CF_SEL) ||
+            el.closest?.(".cf-turnstile"));
 
-        let removed = 0;
-
-        // 1) semua IFRAME yang bukan Cloudflare
         document.querySelectorAll("iframe").forEach((f) => {
-          if (!isCloudflare(f)) { f.remove(); removed++; }
+          if (!isCF(f)) f.remove();
         });
-
-        // 2) elemen overlay: position fixed/sticky/absolute + z-index tinggi
         document.querySelectorAll("body *").forEach((el) => {
-          if (isCloudflare(el)) return;
+          if (isCF(el)) return;
           const st = getComputedStyle(el);
           const z = parseInt(st.zIndex, 10);
-          const pos = st.position;
-          const isOverlay =
-            (pos === "fixed" || pos === "sticky" || pos === "absolute") &&
-            !Number.isNaN(z) && z >= 1000;
-          if (isOverlay) { el.remove(); removed++; }
+          if (
+            (st.position === "fixed" || st.position === "sticky" || st.position === "absolute") &&
+            !Number.isNaN(z) && z >= 1000
+          ) el.remove();
         });
-
-        return removed;
-      }).catch(() => 0);
+      }).catch(() => {});
 
     await killOverlay();
-    const timer = setInterval(() => killOverlay(), 1000);
+    const timer = setInterval(() => killOverlay(), 500);
 
-    // ===== TUNGGU TOKEN =====
     let token = null;
     try {
       await page.waitForFunction(
@@ -79,64 +55,31 @@ router.get("/", async (req, res, next) => {
           const el = document.querySelector('[name="cf-turnstile-response"]');
           return el && el.value && el.value.length > 20;
         },
-        { timeout: 30000, polling: 500 }
+        { timeout: 8000, polling: 300 }
       );
       token = await page.evaluate(
         () => document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
       );
-    } catch (_) {
-      logs.push({ type: "info", text: "Timeout: token tidak muncul" });
     } finally {
       clearInterval(timer);
     }
 
-    // ===== DIAGNOSA (biar tau overlay mana yang masih nyangkut) =====
-    const diag = await page.evaluate(() => {
-      const input = document.querySelector('[name="cf-turnstile-response"]');
-      const widget = document.querySelector(".cf-turnstile, [data-sitekey]");
-      // daftar overlay yang MASIH ada (buat debug)
-      const sisaOverlay = [];
-      document.querySelectorAll("body *").forEach((el) => {
-        const st = getComputedStyle(el);
-        const z = parseInt(st.zIndex, 10);
-        if ((st.position === "fixed" || st.position === "absolute") && z >= 1000) {
-          sisaOverlay.push({
-            tag: el.tagName.toLowerCase(),
-            cls: el.className?.toString().slice(0, 60),
-            id: el.id || null,
-            z,
-          });
-        }
-      });
-      return {
-        inputAda: !!input,
-        inputValue: input ? input.value : null,
-        widgetAda: !!widget,
-        sitekey: widget ? widget.getAttribute("data-sitekey") : null,
-        jumlahIframe: document.querySelectorAll("iframe").length,
-        sisaOverlay,
-      };
-    });
-
-    const { path: shotPath } = await takeScreenshot(page);
-    const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
-
-    res.status(200).json({ token, diag, screenshot: fullUrl, logs });
+    if (!token) return res.status(504).json({ error: "Token gagal didapat" });
+    res.json({ token });
   } catch (err) {
-    logs.push({ type: "fatal", text: err.message });
-    res.status(500).json({ error: err.message, logs });
+    next(err);
   } finally {
     if (page) await page.close();
   }
 });
 
 async function scrollToElement(page, selector, opts = {}) {
-  await page.waitForSelector(selector, { timeout: opts.timeout || 10000 });
+  await page.waitForSelector(selector, { timeout: opts.timeout || 8000 });
   await page.evaluate((selector, block) => {
     const el = document.querySelector(selector);
     if (el) el.scrollIntoView({ behavior: "smooth", block });
   }, selector, opts.block || "center");
-  await new Promise((r) => setTimeout(r, opts.delay || 1200));
+  await new Promise((r) => setTimeout(r, opts.delay || 1000));
 }
 
 module.exports = router;
