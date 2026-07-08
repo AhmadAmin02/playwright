@@ -1,3 +1,13 @@
+"use strict";
+
+const express = require("express");
+const { getRealBrowser } = require("../lib/realBrowser");
+const config = require("../config");
+const { takeScreenshot } = require("../lib/screenshot");
+
+const router = express.Router();
+
+// GET /api/real?url=https://...
 router.get("/", async (req, res, next) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
@@ -54,3 +64,14 @@ router.get("/", async (req, res, next) => {
     if (page) await page.close();
   }
 });
+
+async function scrollToElement(page, selector, opts = {}) {
+  await page.waitForSelector(selector, { timeout: opts.timeout || 10000 });
+  await page.evaluate((selector, block) => {
+    const el = document.querySelector(selector);
+    if (el) el.scrollIntoView({ behavior: "smooth", block });
+  }, selector, opts.block || "center");
+  await new Promise((r) => setTimeout(r, opts.delay || 1200));
+}
+
+module.exports = router;
