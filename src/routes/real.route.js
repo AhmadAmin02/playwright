@@ -9,13 +9,13 @@ const router = express.Router();
 router.get("/", async (req, res, next) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
-
+  
   const logs = [];
   const log = (t, text) => logs.push({ type: t, text });
-
+  
   let context;
   let page;
-
+  
   const snap = async () => {
     if (!page) return null;
     try {
@@ -26,10 +26,10 @@ router.get("/", async (req, res, next) => {
       return null;
     }
   };
-
+  
   try {
     const { browser } = await getRealBrowser();
-
+    
     // ===== CONTEXT BARU = state bersih tiap request =====
     if (typeof browser.createBrowserContext === "function") {
       context = await browser.createBrowserContext();
@@ -39,10 +39,10 @@ router.get("/", async (req, res, next) => {
       log("info", "pakai createIncognitoBrowserContext (isolated)");
     }
     page = context ? await context.newPage() : await browser.newPage();
-
+    
     page.on("console", (m) => log(`console.${m.type()}`, m.text()));
     page.on("pageerror", (e) => log("pageerror", e.message));
-
+    
     // ===== BERSIHKAN cookie + cache (fallback kalau context nggak isolated) =====
     try {
       const client = await page.target().createCDPSession();
@@ -52,24 +52,25 @@ router.get("/", async (req, res, next) => {
     } catch (e) {
       log("info", `clear CDP gagal: ${e.message}`);
     }
-
+    
     await page.setViewport({ width: 360, height: 704 });
-
+    
     await page
       .goto(url, { waitUntil: "domcontentloaded", timeout: 60000 })
       .catch((e) => log("info", `goto: ${e.message}`));
-
+    
     // bersihkan storage origin ini juga (setelah sampai origin)
     await page.evaluate(() => {
-      try { localStorage.clear(); sessionStorage.clear(); } catch (_) {}
+      try { localStorage.clear();
+        sessionStorage.clear(); } catch (_) {}
     }).catch(() => {});
-
+    
     try {
       await scrollToElement(page, "#form-field-language", { block: "center" });
     } catch (e) {
       log("info", `scroll: ${e.message}`);
     }
-
+    
     const killOverlay = () =>
       page.evaluate(() => {
         const CF = ".cf-turnstile, [name='cf-turnstile-response'], iframe[src*='cloudflare']";
@@ -85,24 +86,24 @@ router.get("/", async (req, res, next) => {
       }).catch(() => {});
     await killOverlay();
     const overlayTimer = setInterval(killOverlay, 700);
-
+    
     try {
       await page.waitForSelector(".cf-turnstile, [data-sitekey]", { timeout: 15000 });
     } catch (e) {
       log("info", `widget: ${e.message}`);
     }
-
+    
     const getToken = () =>
       page.evaluate(() => document.querySelector('[name="cf-turnstile-response"]')?.value || null);
-
+    
     // ===== LOOP KLIK sampai dapat token / mentok =====
     const MAX_CLICK = 5;
     let token = await getToken();
     let clickMethod = token ? "none (auto-solve)" : "";
-
+    
     for (let i = 1; !token && i <= MAX_CLICK; i++) {
       log("info", `=== attempt klik #${i} ===`);
-
+      
       // Strategi A: klik dalam iframe CF
       const cfFrame = page.frames().find((f) => /challenges\.cloudflare\.com/.test(f.url()));
       if (cfFrame) {
@@ -123,7 +124,7 @@ router.get("/", async (req, res, next) => {
       }
       token = await waitToken(getToken, 2500);
       if (token) break;
-
+      
       // Strategi B: klik koordinat
       const box = await page.evaluate(() => {
         const el = document.querySelector(".cf-turnstile, [data-sitekey]");
@@ -142,9 +143,9 @@ router.get("/", async (req, res, next) => {
       }
       token = await waitToken(getToken, 2500);
     }
-
+    
     clearInterval(overlayTimer);
-
+    
     const diag = await page.evaluate(() => {
       const input = document.querySelector('[name="cf-turnstile-response"]');
       const widget = document.querySelector(".cf-turnstile, [data-sitekey]");
@@ -155,15 +156,26 @@ router.get("/", async (req, res, next) => {
         jumlahIframe: document.querySelectorAll("iframe").length,
       };
     }).catch((e) => ({ diagError: e.message }));
-
+    
     const screenshot = await snap(); // ss selalu diambil
-    res.status(200).json({ token, clickMethod, diag, screenshot, logs });
+    const { body } = await got.post("https://tubepilot.ai/wp-admin/admin-ajax.php", {
+      form: {
+        action: "yt_video_transcript",
+        "form_fields[video_url]": "https://youtu.be/weO-otW4Vvs?si=M5gHYYSCaEmUslVv",
+        "form_fields[include_timestamps]": "no",
+        "form_fields[format_style]": "vtt",
+        "form_fields[language]": "id",
+        "cf-turnstile-response": token
+      }
+    });
+    const data = htmlToJSON(body);
+    res.status(200).json({ token, clickMethod, diag, screenshot, logs, data });
   } catch (err) {
     log("fatal", err.message);
     const screenshot = await snap(); // ss walau error
     res.status(500).json({ error: err.message, screenshot, logs });
   } finally {
-    if (context) await context.close();      // tutup context → state ikut kebuang
+    if (context) await context.close(); // tutup context → state ikut kebuang
     else if (page) await page.close();
   }
 });
@@ -187,6 +199,57 @@ async function scrollToElement(page, selector, opts = {}) {
     if (el) el.scrollIntoView({ behavior: "smooth", block });
   }, selector, opts.block || "center");
   await sleep(opts.delay || 1000);
+}
+
+function htmlToJSON(html) {
+  html = html
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&")
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"');
+  
+  const video = html.match(/<strong>\s*Video:\s*<\/strong>\s*([^<]+)/i)?.[1]?.trim() ?? null;
+  const language = html.match(/<strong>\s*Language:\s*<\/strong>\s*([^|<]+)/i)?.[1]?.trim() ?? null;
+  const format = html.match(/<strong>\s*Format:\s*<\/strong>\s*([^<]+)/i)?.[1]?.trim() ?? null;
+  
+  const transcript = html.match(
+    /<div class=['"]transcript-content['"][^>]*>([\s\S]*?)<\/div>/i
+  )?.[1] ?? "";
+  
+  const lines = transcript.trim().split(/\r?\n/);
+  
+  const captions = [];
+  let current = null;
+  
+  for (const line of lines) {
+    const text = line.trim();
+    
+    if (!text || text === "WEBVTT") continue;
+    
+    if (text.includes("-->")) {
+      if (current) captions.push(current);
+      
+      const [start, end] = text.split(/\s*-->\s*/);
+      
+      current = {
+        start,
+        end,
+        text: ""
+      };
+    } else if (current) {
+      current.text += (current.text ? " " : "") + text;
+    }
+  }
+  
+  if (current) captions.push(current);
+  
+  return {
+    video,
+    language,
+    format,
+    captions
+  };
 }
 
 module.exports = router;
