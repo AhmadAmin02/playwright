@@ -37,7 +37,7 @@ router.get("/", async (req, res, next) => {
       return el;
     }, { timeout: 60000 });*/
     
-    await new Promise(resolve => setTimeout(resolve, 15000)); // 1 detik
+    await new Promise(resolve => setTimeout(resolve, 10000)); // 1 detik
     await page.evaluate(() => {
       const setValue = (el, value) => {
         const setter = Object.getOwnPropertyDescriptor(
@@ -53,6 +53,7 @@ router.get("/", async (req, res, next) => {
       
       document.querySelector('button[type="submit"]').click();
     });
+    await new Promise(resolve => setTimeout(resolve, 5000));
     const html = await page.content();
     /*const result = await page.evaluate(async () => {
       const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
@@ -75,6 +76,7 @@ router.get("/", async (req, res, next) => {
     
     res.json({
       link,
+      page: page.url(),
       screenshot,
       result: "ah"
     });
