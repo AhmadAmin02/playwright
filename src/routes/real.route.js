@@ -1,6 +1,7 @@
 "use strict";
 
 const express = require("express");
+const got = require("got");
 const { getRealBrowser } = require("../lib/realBrowser");
 const { takeScreenshot } = require("../lib/screenshot");
 
