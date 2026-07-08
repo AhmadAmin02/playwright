@@ -9,13 +9,13 @@ const router = express.Router();
 router.get("/", async (req, res, next) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
-  
+
   const logs = [];
   const log = (t, text) => logs.push({ type: t, text });
-  
+
+  let context;
   let page;
-  
-  // helper: jepret screenshot, aman dipanggil kapan pun
+
   const snap = async () => {
     if (!page) return null;
     try {
@@ -26,29 +26,50 @@ router.get("/", async (req, res, next) => {
       return null;
     }
   };
-  
+
   try {
     const { browser } = await getRealBrowser();
-    page = await browser.newPage();
-    
+
+    // ===== CONTEXT BARU = state bersih tiap request =====
+    if (typeof browser.createBrowserContext === "function") {
+      context = await browser.createBrowserContext();
+      log("info", "pakai createBrowserContext (isolated)");
+    } else if (typeof browser.createIncognitoBrowserContext === "function") {
+      context = await browser.createIncognitoBrowserContext();
+      log("info", "pakai createIncognitoBrowserContext (isolated)");
+    }
+    page = context ? await context.newPage() : await browser.newPage();
+
     page.on("console", (m) => log(`console.${m.type()}`, m.text()));
     page.on("pageerror", (e) => log("pageerror", e.message));
-    
+
+    // ===== BERSIHKAN cookie + cache (fallback kalau context nggak isolated) =====
+    try {
+      const client = await page.target().createCDPSession();
+      await client.send("Network.clearBrowserCookies");
+      await client.send("Network.clearBrowserCache");
+      log("info", "cookies + cache dibersihkan");
+    } catch (e) {
+      log("info", `clear CDP gagal: ${e.message}`);
+    }
+
     await page.setViewport({ width: 360, height: 704 });
-    
-    // goto NON-FATAL, waitUntil valid
+
     await page
       .goto(url, { waitUntil: "domcontentloaded", timeout: 60000 })
       .catch((e) => log("info", `goto: ${e.message}`));
-    
-    // scroll NON-FATAL
+
+    // bersihkan storage origin ini juga (setelah sampai origin)
+    await page.evaluate(() => {
+      try { localStorage.clear(); sessionStorage.clear(); } catch (_) {}
+    }).catch(() => {});
+
     try {
       await scrollToElement(page, "#form-field-language", { block: "center" });
     } catch (e) {
       log("info", `scroll: ${e.message}`);
     }
-    
-    // bersihin overlay
+
     const killOverlay = () =>
       page.evaluate(() => {
         const CF = ".cf-turnstile, [name='cf-turnstile-response'], iframe[src*='cloudflare']";
@@ -64,71 +85,66 @@ router.get("/", async (req, res, next) => {
       }).catch(() => {});
     await killOverlay();
     const overlayTimer = setInterval(killOverlay, 700);
-    
-    // tunggu widget NON-FATAL
+
     try {
       await page.waitForSelector(".cf-turnstile, [data-sitekey]", { timeout: 15000 });
     } catch (e) {
       log("info", `widget: ${e.message}`);
     }
-    
+
     const getToken = () =>
       page.evaluate(() => document.querySelector('[name="cf-turnstile-response"]')?.value || null);
-    
+
+    // ===== LOOP KLIK sampai dapat token / mentok =====
+    const MAX_CLICK = 5;
     let token = await getToken();
-    let clickMethod = "none (auto-solve)";
-    
-    if (!token) {
-      await sleep(3000);
-      token = await getToken();
-      
-      if (!token) {
-        // STRATEGI A: klik di dalam iframe Cloudflare
-        const cfFrame = page.frames().find((f) => /challenges\.cloudflare\.com/.test(f.url()));
-        log("info", `CF iframe: ${!!cfFrame}`);
-        if (cfFrame) {
-          try {
-            await cfFrame.waitForSelector('input[type="checkbox"], label, body', { timeout: 5000 });
-            const target =
-              (await cfFrame.$('input[type="checkbox"]')) ||
-              (await cfFrame.$("label")) ||
-              (await cfFrame.$("body"));
-            if (target) {
-              await target.click();
-              clickMethod = "A: klik dalam iframe CF";
-              log("info", clickMethod);
-            }
-          } catch (e) {
-            log("info", `Strategi A gagal: ${e.message}`);
-          }
-        }
-        token = await waitToken(getToken, 6000);
-        
-        // STRATEGI B: klik koordinat
-        if (!token) {
-          const box = await page.evaluate(() => {
-            const el = document.querySelector(".cf-turnstile, [data-sitekey]");
-            if (!el) return null;
-            const r = el.getBoundingClientRect();
-            return { x: r.x, y: r.y, w: r.width, h: r.height };
-          });
-          log("info", `box: ${JSON.stringify(box)}`);
-          if (box) {
-            const cx = box.x + 30;
-            const cy = box.y + box.h / 2;
-            await page.mouse.move(cx - 5, cy - 5);
-            await sleep(150);
-            await page.mouse.click(cx, cy);
-            clickMethod = `B: klik koordinat (${Math.round(cx)}, ${Math.round(cy)})`;
+    let clickMethod = token ? "none (auto-solve)" : "";
+
+    for (let i = 1; !token && i <= MAX_CLICK; i++) {
+      log("info", `=== attempt klik #${i} ===`);
+
+      // Strategi A: klik dalam iframe CF
+      const cfFrame = page.frames().find((f) => /challenges\.cloudflare\.com/.test(f.url()));
+      if (cfFrame) {
+        try {
+          await cfFrame.waitForSelector('input[type="checkbox"], label, body', { timeout: 3000 });
+          const target =
+            (await cfFrame.$('input[type="checkbox"]')) ||
+            (await cfFrame.$("label")) ||
+            (await cfFrame.$("body"));
+          if (target) {
+            await target.click();
+            clickMethod = `A#${i}: klik dalam iframe`;
             log("info", clickMethod);
           }
+        } catch (e) {
+          log("info", `A#${i} gagal: ${e.message}`);
         }
-        token = token || (await waitToken(getToken, 8000));
       }
+      token = await waitToken(getToken, 2500);
+      if (token) break;
+
+      // Strategi B: klik koordinat
+      const box = await page.evaluate(() => {
+        const el = document.querySelector(".cf-turnstile, [data-sitekey]");
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.x, y: r.y, w: r.width, h: r.height };
+      });
+      if (box) {
+        const cx = box.x + 30;
+        const cy = box.y + box.h / 2;
+        await page.mouse.move(cx - 5, cy - 5);
+        await sleep(120);
+        await page.mouse.click(cx, cy);
+        clickMethod = `B#${i}: koordinat (${Math.round(cx)}, ${Math.round(cy)})`;
+        log("info", clickMethod);
+      }
+      token = await waitToken(getToken, 2500);
     }
-    
+
     clearInterval(overlayTimer);
-    
+
     const diag = await page.evaluate(() => {
       const input = document.querySelector('[name="cf-turnstile-response"]');
       const widget = document.querySelector(".cf-turnstile, [data-sitekey]");
@@ -137,18 +153,18 @@ router.get("/", async (req, res, next) => {
         inputValue: input ? input.value : null,
         widgetAda: !!widget,
         jumlahIframe: document.querySelectorAll("iframe").length,
-        frameUrls: [...document.querySelectorAll("iframe")].map((f) => f.src).slice(0, 5),
       };
     }).catch((e) => ({ diagError: e.message }));
-    
-    const screenshot = await snap();
+
+    const screenshot = await snap(); // ss selalu diambil
     res.status(200).json({ token, clickMethod, diag, screenshot, logs });
   } catch (err) {
     log("fatal", err.message);
-    const screenshot = await snap(); // <-- screenshot WALAU error
+    const screenshot = await snap(); // ss walau error
     res.status(500).json({ error: err.message, screenshot, logs });
   } finally {
-    if (page) await page.close();
+    if (context) await context.close();      // tutup context → state ikut kebuang
+    else if (page) await page.close();
   }
 });
 
