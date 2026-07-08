@@ -19,11 +19,12 @@ router.get("/", async (req, res, next) => {
     const link = `https://amprem.irfanjawa.com/`;
     await page.goto(link, { waitUntil: "domcontentloaded", timeout: 60000 });
     
-    //if (page.url()) 
+    while (!page.url().includes("dashboard")) {
+      await new Promise(r => setTimeout(r, 500));
+    }
     
     //await new Promise(resolve => setTimeout(resolve, 100000)); // 1 detik
     const html = await page.content();
-    
     
     const { path: shotPath } = await takeScreenshot(page);
     const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;
