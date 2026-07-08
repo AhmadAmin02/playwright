@@ -29,7 +29,9 @@ router.get("/", async (req, res, next) => {
     page.on("pageerror", (e) => log("pageerror", e.message));
     
     await page.setViewport({ width: 360, height: 704 });
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page
+      .goto(url, { waitUntil: "commit", timeout: 60000 })
+      .catch((e) => log("info", `goto: ${e.message}`));
     
     await scrollToElement(page, "#form-field-language", { block: "center" });
     
