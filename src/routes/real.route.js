@@ -7,21 +7,54 @@ const { takeScreenshot } = require("../lib/screenshot");
 
 const router = express.Router();
 
-// GET /api/real?url=https://...
 router.get("/", async (req, res, next) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
+
+  const logs = []; // <-- tampung semua console/error/network
 
   let page;
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
-    await page.setViewport({ width: 360, height: 704 });
 
+    // ===== FULL DEBUG CONSOLE =====
+    page.on("console", (msg) =>
+      logs.push({ type: `console.${msg.type()}`, text: msg.text() })
+    );
+    page.on("pageerror", (err) =>
+      logs.push({ type: "pageerror", text: err.message })
+    );
+    page.on("requestfailed", (req) =>
+      logs.push({
+        type: "requestfailed",
+        text: `${req.method()} ${req.url()} — ${req.failure()?.errorText}`,
+      })
+    );
+    page.on("response", (resp) => {
+      if (resp.status() >= 400)
+        logs.push({ type: "response", text: `${resp.status()} ${resp.url()}` });
+    });
+    // ==============================
+
+    await page.setViewport({ width: 360, height: 704 });
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+
     await scrollToElement(page, "#form-field-language", { block: "center" });
 
-    // coba tunggu token, tapi JANGAN langsung throw — kita mau diagnosa
+    // ===== HAPUS OVERLAY DULU (sebelum nunggu token) =====
+    // dipanggil berkala karena kadang di-inject ulang
+    const killOverlay = async () => {
+      await page.evaluate(() => {
+        document
+          .querySelectorAll("body > div.taku_box, .taku_box, .taku_box-iframe")
+          .forEach((el) => el.remove());
+      });
+    };
+    await killOverlay();
+    const overlayTimer = setInterval(() => killOverlay().catch(() => {}), 1000);
+
+    // ===== TUNGGU TOKEN =====
     let token = null;
     try {
       await page.waitForFunction(
@@ -29,16 +62,17 @@ router.get("/", async (req, res, next) => {
           const el = document.querySelector('[name="cf-turnstile-response"]');
           return el && el.value && el.value.length > 20;
         },
-        { timeout: 25000, polling: 500 }
+        { timeout: 30000, polling: 500 }
       );
       token = await page.evaluate(
         () => document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
       );
     } catch (_) {
-      // timeout → ambil info diagnostik
+      logs.push({ type: "info", text: "Timeout: token tidak muncul" });
+    } finally {
+      clearInterval(overlayTimer);
     }
 
-    // DIAGNOSA: apa yang sebenarnya ada di halaman?
     const diag = await page.evaluate(() => {
       const input = document.querySelector('[name="cf-turnstile-response"]');
       const widget = document.querySelector(".cf-turnstile, [data-sitekey]");
@@ -48,18 +82,17 @@ router.get("/", async (req, res, next) => {
         widgetAda: !!widget,
         sitekey: widget ? widget.getAttribute("data-sitekey") : null,
         jumlahIframe: document.querySelectorAll("iframe").length,
-        title: document.title,
-        bodySnippet: document.body.innerText.slice(0, 300),
+        overlayMasihAda: !!document.querySelector("div.taku_box"),
       };
     });
 
-    // screenshot kondisi saat ini (SEBELUM hapus iframe apa pun)
     const { path: shotPath } = await takeScreenshot(page);
     const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;
 
-    res.status(200).json({ token, diag, screenshot: fullUrl });
+    res.status(200).json({ token, diag, screenshot: fullUrl, logs });
   } catch (err) {
-    next(err);
+    logs.push({ type: "fatal", text: err.message });
+    res.status(500).json({ error: err.message, logs });
   } finally {
     if (page) await page.close();
   }
