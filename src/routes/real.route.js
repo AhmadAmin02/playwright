@@ -26,13 +26,13 @@ router.get("/", async (req, res, next) => {
     });
     
     await scrollToElement(page, '#form-field-language', { block: "center" });
-    await page.waitForFunction(() => {
+    /*await page.waitForFunction(() => {
       const el = document.querySelector('[name="cf-turnstile-response"]');
       return el && el.value.length > 0;
     }, {
       timeout: 30000
-    });
-    //await new Promise(resolve => setTimeout(resolve, 5000));
+    });*/
+    await new Promise(resolve => setTimeout(resolve, 5000));
     await page.evaluate(() => {
       const iframe = document.querySelector('.taku_box-iframe');
       if (iframe) iframe.remove();
