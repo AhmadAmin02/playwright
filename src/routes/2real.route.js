@@ -1,103 +1,108 @@
 "use strict";
 
 const express = require("express");
-const got = require("got");
 const { getRealBrowser } = require("../lib/realBrowser");
-const config = require("../config");
 const { takeScreenshot } = require("../lib/screenshot");
 
 const router = express.Router();
 
-// GET /api/real?url=https://...&json=1
+// GET /api/real?url=https://...
 router.get("/", async (req, res, next) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });
+  /*const { url } = req.query;
+  if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });*/
   
   let page;
   try {
     const { browser } = await getRealBrowser();
     page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+    const link = `https://amprem.irfanjawa.com/`;
+    await page.goto(link, { waitUntil: "domcontentloaded", timeout: 60000 });
     
-    await page.setViewport({ width: 360, height: 704 });
-    //const { id } = await startRecording(page, { fps: 12, width: 854, height: 480 });
+    const html = await page.content();
     
-    await page.goto(url, {
-      waitUntil: "domcontentloaded",
-      timeout: 0,
-    });
-    
-    await scrollToElement(page, '#form-field-language', { block: "center" });
     const { path: shotPath } = await takeScreenshot(page);
-    console.log(shotPath);
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[name="cf-turnstile-response"]');
-      return el && el.value.length > 0;
-    }, {
-      timeout: 60000
+    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;
+    
+    res.json({
+      link,
+      html,
+      screenshot
     });
-    //await new Promise(resolve => setTimeout(resolve, 5000));
-    /*await page.evaluate(() => {
-      const iframe = document.querySelector('.taku_box-iframe');
-      if (iframe) iframe.remove();
-    });*/
-    const token = await page.evaluate(() =>
-      document.querySelector('[name="cf-turnstile-response"]')?.value ?? null
-    );
-    console.log(token);
-    const { body } = await got.post("https://tubepilot.ai/wp-admin/admin-ajax.php", {
-      form: {
-        action: "yt_video_transcript",
-        "form_fields[video_url]": "https://youtu.be/weO-otW4Vvs?si=M5gHYYSCaEmUslVv",
-        "form_fields[include_timestamps]": "no",
-        "form_fields[format_style]": "vtt",
-        "form_fields[language]": "id",
-        "cf-turnstile-response": token
-      }
-    });
-    console.log(body);
-    /*const { path: videoPath } = await stopRecording(id);
-    const fullUrl = `${req.protocol}://${req.get("host")}${shotPath}`;*/
-    res.status(200).json({ body });
   } catch (err) {
     next(err);
   } finally {
-    if (page) await page.close(); // tutup page, browser tetap hidup
+    if (page) await page.close();
   }
 });
 
-async function scrollToElement(page, selector, opts = {}) {
-  // tunggu elemennya muncul dulu (biar nggak error kalau lazy-load)
-  await page.waitForSelector(selector, { timeout: opts.timeout || 10000 });
+/**
+ * Cari link YouTube dari sebuah string dan kembalikan video ID-nya.
+ *
+ * - Input 1 URL saja  -> return string ID tunggal (atau null kalau tidak valid)
+ * - Input teks/banyak link -> return array ID (otomatis dedupe)
+ *
+ * @param {string} input
+ * @param {boolean} [unique=true]  Dedupe ID saat hasilnya array.
+ * @returns {string|null|string[]}
+ */
+function getId(input, unique = true) {
+  const idPattern = /^[A-Za-z0-9_-]{11}$/;
   
-  await page.evaluate((selector, block) => {
-    const el = document.querySelector(selector);
-    if (el) el.scrollIntoView({ behavior: "smooth", block });
-  }, selector, opts.block || "center"); // "start" | "center" | "end"
+  // Ambil ID dari satu potongan URL
+  const parseOne = (raw) => {
+    try {
+      let clean = raw.trim();
+      if (!/^https?:\/\//i.test(clean)) clean = "https://" + clean;
+      
+      const u = new URL(clean);
+      const host = u.hostname.replace(/^www\./, "").toLowerCase();
+      
+      const isYoutube =
+        host === "youtube.com" ||
+        host === "m.youtube.com" ||
+        host === "music.youtube.com" ||
+        host === "youtube-nocookie.com" ||
+        host === "youtu.be";
+      if (!isYoutube) return null;
+      
+      let id = null;
+      const parts = u.pathname.split("/").filter(Boolean);
+      
+      if (host === "youtu.be") {
+        id = parts[0]; // youtu.be/<id>
+      } else if (u.searchParams.get("v")) {
+        id = u.searchParams.get("v"); // watch?v=<id>
+      } else if (parts.length >= 2 && ["shorts", "embed", "live", "v", "watch"].includes(parts[0])) {
+        id = parts[1]; // /shorts|embed|live|v|watch/<id>
+      }
+      
+      return id && idPattern.test(id) ? id : null;
+    } catch {
+      return null;
+    }
+  };
   
-  // kasih jeda biar animasi scroll-nya kerekam
-  await new Promise((r) => setTimeout(r, opts.delay || 1200));
-}
-
-function vttToJson(vtt) {
-  return vtt
-    .replace(/^WEBVTT\s*/i, "")
-    .trim()
-    .split(/\n\s*\n/)
-    .map(block => {
-      const lines = block.trim().split("\n");
-      
-      if (lines.length < 2) return null;
-      
-      const time = lines[0].match(/(.*?)\s+-->\s+(.*)/);
-      if (!time) return null;
-      
-      return {
-        start: time[1].trim(),
-        end: time[2].trim(),
-        text: lines.slice(1).join("\n")
-      };
-    })
-    .filter(Boolean);
+  if (typeof input !== "string") return null;
+  
+  // Deteksi: apakah input cuma 1 URL (tanpa spasi/newline di dalamnya)?
+  const isSingleUrl = input.trim().length > 0 && !/\s/.test(input.trim());
+  
+  if (isSingleUrl) {
+    return parseOne(input); // -> string | null
+  }
+  
+  // Mode teks: cari semua link YouTube
+  const urlRegex =
+    /https?:\/\/[^\s<>"'`)]+|(?:www\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)[^\s<>"'`)]*/gi;
+  
+  const ids = [];
+  for (const raw of input.match(urlRegex) || []) {
+    const id = parseOne(raw);
+    if (id) ids.push(id);
+  }
+  
+  return unique ? [...new Set(ids)] : ids; // -> string[]
 }
 
 module.exports = router;
