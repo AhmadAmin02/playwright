@@ -39,14 +39,29 @@ router.get("/", async (req, res, next) => {
     
     await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
     const html = await page.content();
+    const result = await page.evaluate(async () => {
+      const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({
+          email: "sapudinasiktau@gmail.com"
+        })
+      });
+      
+      return await res.json();
+    });
+    
     
     const { path: shotPath } = await takeScreenshot(page);
     const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;
     
     res.json({
       link,
-      page: page.url(),
-      screenshot
+      screenshot,
+      result
     });
   } catch (err) {
     next(err);
