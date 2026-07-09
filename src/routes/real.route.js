@@ -3,14 +3,30 @@
 const express = require("express");
 const { getRealBrowser } = require("../lib/realBrowser");
 const { takeScreenshot } = require("../lib/screenshot");
+const fs = require("fs");
+const path = require("path");
+
+const dir = path.join(process.cwd(), "tmp");
 
 const router = express.Router();
 
 // GET /api/real?url=https://...
 router.get("/", async (req, res, next) => {
-  /*const { url } = req.query;
-  if (!url) return res.status(400).json({ error: "Query `url` wajib diisi" });*/
-  
+  const query = {
+    email: req.query.email || "",
+    link: req.query.link || "",
+    step: 1
+  };
+  if (isValidEmail(query.email)) {
+    return res.status(400).json({ success: false, error: "Email tolong diisi." });
+  }
+  const file = path.join(dir, `${query.email}.json`);
+  if (!fs.existsSync(file)) {
+    wdata(file, query.step);
+  } else {
+    const data = rdata(file);
+    query.step = data.step;
+  }
   let page;
   try {
     const { browser } = await getRealBrowser();
@@ -59,32 +75,47 @@ router.get("/", async (req, res, next) => {
       });
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
-    const html = await page.content();
-    const result = await page.evaluate(async () => {
-      const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({
-          email: "sapudinasiktau@gmail.com"
-        })
-      });
-      
-      return await res.json();
-    });
+    const result = await page.evaluate(async (query) => {
+      if (query.step === 1) {
+        const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            email: query.email
+          })
+        });
+        const d = await res.json();
+        if (!d.success) return d.message;
+        return d.success;
+      } else if (query.step === 2) {
+        const res2 = await fetch("https://amprem.irfanjawa.com/api/auth/verify-magic-link", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            email: query.email,
+            magicLink: query.link
+          })
+        });
+        const d2 = await res.json();
+        if (!d2.success) return d2.message;
+        return d2;
+      }
+    }, query);
     
     
-    const { path: shotPath } = await takeScreenshot(page);
-    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;
+    /*const { path: shotPath } = await takeScreenshot(page);
+    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;*/
     
     res.json({
-      link,
-      page: page.url(),
-      screenshot,
       result
     });
+    if (query.step === 1) wdata(file, 2);
   } catch (err) {
     next(err);
   } finally {
@@ -92,73 +123,18 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-/**
- * Cari link YouTube dari sebuah string dan kembalikan video ID-nya.
- *
- * - Input 1 URL saja  -> return string ID tunggal (atau null kalau tidak valid)
- * - Input teks/banyak link -> return array ID (otomatis dedupe)
- *
- * @param {string} input
- * @param {boolean} [unique=true]  Dedupe ID saat hasilnya array.
- * @returns {string|null|string[]}
- */
-function getId(input, unique = true) {
-  const idPattern = /^[A-Za-z0-9_-]{11}$/;
-  
-  // Ambil ID dari satu potongan URL
-  const parseOne = (raw) => {
-    try {
-      let clean = raw.trim();
-      if (!/^https?:\/\//i.test(clean)) clean = "https://" + clean;
-      
-      const u = new URL(clean);
-      const host = u.hostname.replace(/^www\./, "").toLowerCase();
-      
-      const isYoutube =
-        host === "youtube.com" ||
-        host === "m.youtube.com" ||
-        host === "music.youtube.com" ||
-        host === "youtube-nocookie.com" ||
-        host === "youtu.be";
-      if (!isYoutube) return null;
-      
-      let id = null;
-      const parts = u.pathname.split("/").filter(Boolean);
-      
-      if (host === "youtu.be") {
-        id = parts[0]; // youtu.be/<id>
-      } else if (u.searchParams.get("v")) {
-        id = u.searchParams.get("v"); // watch?v=<id>
-      } else if (parts.length >= 2 && ["shorts", "embed", "live", "v", "watch"].includes(parts[0])) {
-        id = parts[1]; // /shorts|embed|live|v|watch/<id>
-      }
-      
-      return id && idPattern.test(id) ? id : null;
-    } catch {
-      return null;
-    }
-  };
-  
-  if (typeof input !== "string") return null;
-  
-  // Deteksi: apakah input cuma 1 URL (tanpa spasi/newline di dalamnya)?
-  const isSingleUrl = input.trim().length > 0 && !/\s/.test(input.trim());
-  
-  if (isSingleUrl) {
-    return parseOne(input); // -> string | null
-  }
-  
-  // Mode teks: cari semua link YouTube
-  const urlRegex =
-    /https?:\/\/[^\s<>"'`)]+|(?:www\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)[^\s<>"'`)]*/gi;
-  
-  const ids = [];
-  for (const raw of input.match(urlRegex) || []) {
-    const id = parseOne(raw);
-    if (id) ids.push(id);
-  }
-  
-  return unique ? [...new Set(ids)] : ids; // -> string[]
+function isValidEmail(email) {
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+}
+
+function wdata(file, step = 1) {
+  fs.writeFileSync(file, JSON.stringify({
+    step
+  }));
+}
+
+function rdata(file) {
+  return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
 module.exports = router;
