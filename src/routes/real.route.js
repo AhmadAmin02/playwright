@@ -46,7 +46,10 @@ router.get("/", async (req, res, next) => {
     await page.goto(link, { waitUntil: "domcontentloaded", timeout: 60000 });
     
     while (!page.url().includes("dashboard")) {
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 5000));
+      const { path: shotPath2 } = await takeScreenshot(page);
+      const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath2}`;
+      console.log(screenshot2);
     }
     /*await page.waitForFunction(() => {
       const el = document.querySelector(
@@ -57,9 +60,6 @@ router.get("/", async (req, res, next) => {
     }, { timeout: 60000 });*/
     
     //await new Promise(resolve => setTimeout(resolve, 10000)); // 1 detik
-    const { path: shotPath2 } = await takeScreenshot(page);
-    const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath2}`;
-    console.log(screenshot2);
     if (!page.url().includes("dashboard")) {
       await page.evaluate(() => {
         const setValue = (el, value) => {
