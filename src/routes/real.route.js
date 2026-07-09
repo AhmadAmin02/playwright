@@ -37,26 +37,28 @@ router.get("/", async (req, res, next) => {
       return el;
     }, { timeout: 60000 });*/
     
-    await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
+    await new Promise(resolve => setTimeout(resolve, 10000)); // 1 detik
     const { path: shotPath2 } = await takeScreenshot(page);
     const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath2}`;
     console.log(screenshot2);
-    await page.evaluate(() => {
-      const setValue = (el, value) => {
-        const setter = Object.getOwnPropertyDescriptor(
-          HTMLInputElement.prototype,
-          "value"
-        ).set;
-        setter.call(el, value);
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-      };
-      
-      setValue(document.querySelector('input[type="email"]'), "sapudinasiktau@gmail.com");
-      setValue(document.querySelector('input[type="password"]'), "asikbanget");
-      
-      document.querySelector('button[type="submit"]').click();
-    });
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    if (!page.url().includes("dashboard")) {
+      await page.evaluate(() => {
+        const setValue = (el, value) => {
+          const setter = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            "value"
+          ).set;
+          setter.call(el, value);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        };
+        
+        setValue(document.querySelector('input[type="email"]'), "sapudinasiktau@gmail.com");
+        setValue(document.querySelector('input[type="password"]'), "asikbanget");
+        
+        document.querySelector('button[type="submit"]').click();
+      });
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
     const html = await page.content();
     const result = await page.evaluate(async () => {
       const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
