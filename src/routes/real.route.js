@@ -17,7 +17,7 @@ router.get("/", async (req, res, next) => {
     link: req.query.link || "",
     step: 1
   };
-  if (isValidEmail(query.email)) {
+  if (!isValidEmail(query.email)) {
     return res.status(400).json({ success: false, error: "Email tolong diisi." });
   }
   const file = path.join(dir, `${query.email}.json`);
