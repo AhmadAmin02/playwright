@@ -57,7 +57,7 @@ router.get("/", async (req, res, next) => {
         
         document.querySelector('button[type="submit"]').click();
       });
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
     const html = await page.content();
     const result = await page.evaluate(async () => {
