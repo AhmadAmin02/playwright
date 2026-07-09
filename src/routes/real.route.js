@@ -7,6 +7,9 @@ const fs = require("fs");
 const path = require("path");
 
 const dir = path.join(process.cwd(), "tmp");
+if (!fs.existsSync(dir)) {
+  fs.mkdirSync(dir);
+}
 
 const router = express.Router();
 
