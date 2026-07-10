@@ -52,23 +52,21 @@ router.get("/", async (req, res, next) => {
     });
     
     // Screenshot (pakai fungsi kamu)
-    const { path: shotPath } = await takeScreenshot(page);
-    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;
+    /*const { path: shotPath } = await takeScreenshot(page);
+    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;*/
     
     // Simpan HTML
     const html = await page.content();
     
     // Ambil cookie
-    const cookies = await page.cookies();
+    /*const cookies = await page.cookies();
     const cookieHeader = cookies
       .map(c => `${c.name}=${c.value}`)
-      .join("; ");
-    const data = extractSigiJson(html, true);
+      .join("; ");*/
+    const data = extractSigiJson(html, false);
     
     res.json({
       success: true,
-      cookieHeader,
-      screenshot,
       data
     });
     
@@ -130,7 +128,7 @@ function extractSigiJson(html, dataOnly) {
   }
   
   const user = userInfo.user || {};
-  const stats = userInfo.stats || {};
+  const stats = userInfo.statsV2 || {};
   
   const bioLinkObj = user.bioLink;
   let bioLink = null;
