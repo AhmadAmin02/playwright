@@ -13,131 +13,76 @@ if (!fs.existsSync(dir)) {
 
 const router = express.Router();
 
-// GET /api/real?url=https://...
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 router.get("/", async (req, res, next) => {
-  const query = {
-    email: req.query.email || "",
-    link: req.query.link || "",
-    step: 1
-  };
-  if (!isValidEmail(query.email)) {
-    return res.status(400).json({ success: false, error: "Email tolong diisi." });
-  }
-  const file = path.join(dir, `${query.email}.json`);
-  if (!fs.existsSync(file)) {
-    wdata(file, query.step);
-  } else {
-    const data = rdata(file);
-    query.step = data.step;
-  }
+  let browser;
   let page;
+  
   try {
-    const { browser } = await getRealBrowser();
+    ({ browser } = await getRealBrowser());
+    
     page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-    const link = `https://amprem.irfanjawa.com/auth`;
-    page.on("console", msg => console.log(msg.text()));
     
-    page.on("response", res => {
-      if (res.url().includes("challenge")) {
-        console.log(res.status(), res.url());
-      }
+    await page.setViewport({
+      width: 1280,
+      height: 800,
     });
-    await page.goto(link, { waitUntil: "domcontentloaded", timeout: 60000 });
     
-    /*while (!page.url().includes("dashboard")) {
-      await new Promise(r => setTimeout(r, 5000));
-      const { path: shotPath2 } = await takeScreenshot(page);
-      const screenshot2 = `${req.protocol}://${req.get("host")}${shotPath2}`;
-      console.log(screenshot2);
-    }*/
-    /*await page.waitForFunction(() => {
-      const el = document.querySelector(
-        "body > main > nav > div > div:nth-child(2) > a.btn-primary.text-sm"
-      );
-      
-      return el;
-    }, { timeout: 60000 });*/
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+    );
     
-    await new Promise(resolve => setTimeout(resolve, 20000)); // 1 detik
-    if (!page.url().includes("dashboard")) {
-      await page.evaluate(() => {
-        const setValue = (el, value) => {
-          const setter = Object.getOwnPropertyDescriptor(
-            HTMLInputElement.prototype,
-            "value"
-          ).set;
-          setter.call(el, value);
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-        };
-        
-        setValue(document.querySelector('input[type="email"]'), "sapudinasiktau@gmail.com");
-        setValue(document.querySelector('input[type="password"]'), "asikbanget");
-        
-        document.querySelector('button[type="submit"]').click();
-      });
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    const result = await page.evaluate(async (query) => {
-      if (query.step === 1) {
-        const res = await fetch("https://amprem.irfanjawa.com/api/auth/send-magic-link", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            email: query.email
-          })
-        });
-        const d = await res.json();
-        if (!d.success) return d.message;
-        return d.success;
-      } else if (query.step === 2) {
-        const res2 = await fetch("https://amprem.irfanjawa.com/api/auth/verify-magic-link", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            email: query.email,
-            magicLink: query.link
-          })
-        });
-        const d2 = await res.json();
-        if (!d2.success) return d2.message;
-        return d2;
-      }
-    }, query);
+    page.on("console", msg => {
+      console.log("[Console]", msg.text());
+    });
     
+    page.on("response", response => {
+      console.log(response.status(), response.url());
+    });
     
-    /*const { path: shotPath } = await takeScreenshot(page);
-    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;*/
+    await page.goto("https://www.tiktok.com/@tiktok", {
+      waitUntil: "networkidle2",
+      timeout: 120000,
+    });
+    
+    // Tunggu kalau ada challenge
+    await delay(10000);
+    
+    // Screenshot (pakai fungsi kamu)
+    const { path: shotPath } = await takeScreenshot(page);
+    const screenshot = `${req.protocol}://${req.get("host")}${shotPath}`;
+    
+    // Simpan HTML
+    const html = await page.content();
+    fs.writeFileSync(
+      path.join(dir, "tiktok.html"),
+      html,
+      "utf8"
+    );
+    
+    // Ambil cookie
+    const cookies = await page.cookies();
+    const cookieHeader = cookies
+      .map(c => `${c.name}=${c.value}`)
+      .join("; ");
     
     res.json({
-      result
+      success: true,
+      url: page.url(),
+      title: await page.title(),
+      cookies: cookies.length,
+      cookieHeader,
+      screenshot,
+      html: `${req.protocol}://${req.get("host")}/tmp/tiktok.html`
     });
-    if (query.step === 1) wdata(file, 2);
+    
   } catch (err) {
     next(err);
   } finally {
-    if (page) await page.close();
+    if (page) await page.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
   }
 });
-
-function isValidEmail(email) {
-  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
-}
-
-function wdata(file, step = 1) {
-  fs.writeFileSync(file, JSON.stringify({
-    step
-  }));
-}
-
-function rdata(file) {
-  return JSON.parse(fs.readFileSync(file, "utf8"));
-}
 
 module.exports = router;
