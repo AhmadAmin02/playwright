@@ -47,7 +47,7 @@ router.get("/", async (req, res, next) => {
     });
     
     // Tunggu kalau ada challenge
-    await delay(10000);
+    await delay(5000);
     
     // Screenshot (pakai fungsi kamu)
     const { path: shotPath } = await takeScreenshot(page);
@@ -55,26 +55,23 @@ router.get("/", async (req, res, next) => {
     
     // Simpan HTML
     const html = await page.content();
-    fs.writeFileSync(
-      path.join(dir, "tiktok.html"),
-      html,
-      "utf8"
-    );
     
     // Ambil cookie
     const cookies = await page.cookies();
     const cookieHeader = cookies
       .map(c => `${c.name}=${c.value}`)
       .join("; ");
+      const data = extractSigiJson(html);
     
     res.json({
       success: true,
+      html,
       url: page.url(),
       title: await page.title(),
       cookies: cookies.length,
       cookieHeader,
       screenshot,
-      html: `${req.protocol}://${req.get("host")}/tmp/tiktok.html`
+      data
     });
     
   } catch (err) {
@@ -84,5 +81,22 @@ router.get("/", async (req, res, next) => {
     if (browser) await browser.close().catch(() => {});
   }
 });
+
+function extractSigiJson(html) {
+  const markerPos = html.indexOf(SIGI_MARKER);
+  if (markerPos === -1) return "SIGI script tag not found in HTML";
+  
+  const gtPos = html.indexOf(">", markerPos);
+  if (gtPos === -1) return "no > after SIGI marker";
+  
+  const jsonStart = gtPos + 1;
+  const scriptEnd = html.indexOf("</script>", jsonStart);
+  if (scriptEnd === -1) return "no </script> after SIGI JSON";
+  
+  const jsonStr = html.slice(jsonStart, scriptEnd);
+  if (!jsonStr) return "empty SIGI JSON blob";
+  
+  return jsonStr;
+}
 
 module.exports = router;
