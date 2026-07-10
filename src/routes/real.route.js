@@ -61,13 +61,14 @@ router.get("/", async (req, res, next) => {
     const html = await page.content();
     
     // Ambil cookie
-    /*const cookies = await page.cookies();
+    const cookies = await page.cookies();
     const cookieHeader = cookies
       .map(c => `${c.name}=${c.value}`)
-      .join("; ");*/
+      .join("; ");
     const data = extractSigiJson(html, false);
     
     res.json({
+      cookieHeader,
       success: true,
       data
     });
