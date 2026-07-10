@@ -5,6 +5,7 @@ const { getRealBrowser } = require("../lib/realBrowser");
 const { takeScreenshot } = require("../lib/screenshot");
 const fs = require("fs");
 const path = require("path");
+const SIGI_MARKER = 'id="__UNIVERSAL_DATA_FOR_REHYDRATION__"';
 
 const dir = path.join(process.cwd(), "tmp");
 if (!fs.existsSync(dir)) {
@@ -61,7 +62,7 @@ router.get("/", async (req, res, next) => {
     const cookieHeader = cookies
       .map(c => `${c.name}=${c.value}`)
       .join("; ");
-      const data = extractSigiJson(html);
+    const data = extractSigiJson(html);
     
     res.json({
       success: true,
