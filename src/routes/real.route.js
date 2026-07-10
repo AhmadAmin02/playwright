@@ -41,13 +41,15 @@ router.get("/", async (req, res, next) => {
       console.log(response.status(), response.url());
     });
     
-    await page.goto("https://www.tiktok.com/@tiktok", {
+    await page.goto("https://www.tiktok.com/@loisaramadhani_real", {
       waitUntil: "networkidle2",
       timeout: 120000,
     });
     
     // Tunggu kalau ada challenge
-    await delay(5000);
+    await page.waitForSelector("#__UNIVERSAL_DATA_FOR_REHYDRATION__", {
+      timeout: 120000,
+    });
     
     // Screenshot (pakai fungsi kamu)
     const { path: shotPath } = await takeScreenshot(page);
@@ -61,13 +63,10 @@ router.get("/", async (req, res, next) => {
     const cookieHeader = cookies
       .map(c => `${c.name}=${c.value}`)
       .join("; ");
-    const data = extractSigiJson(html);
+    const data = extractSigiJson(html, true);
     
     res.json({
       success: true,
-      url: page.url(),
-      title: await page.title(),
-      cookies: cookies.length,
       cookieHeader,
       screenshot,
       data
@@ -80,7 +79,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-function extractSigiJson(html) {
+function extractSigiJson(html, dataOnly) {
   const markerPos = html.indexOf(SIGI_MARKER);
   if (markerPos === -1) return "SIGI script tag not found in HTML";
   
@@ -93,6 +92,8 @@ function extractSigiJson(html) {
   
   const jsonStr = html.slice(jsonStart, scriptEnd);
   if (!jsonStr) return "empty SIGI JSON blob";
+  
+  if (dataOnly) return jsonStr;
   
   const blob = JSON.parse(jsonStr);
   
