@@ -17,6 +17,8 @@ const router = express.Router();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 router.get("/", async (req, res, next) => {
+  const { users } = req.query;
+  if (!users) return res.status(400).json({ error: "Query `users` wajib diisi" }); 
   let page;
   
   try {
@@ -41,7 +43,7 @@ router.get("/", async (req, res, next) => {
       console.log(response.status(), response.url());
     });
     
-    await page.goto("https://www.tiktok.com/@loisaramadhani_real", {
+    await page.goto(`https://www.tiktok.com/@${users}`, {
       waitUntil: "networkidle2",
       timeout: 120000,
     });
