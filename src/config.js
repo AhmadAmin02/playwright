@@ -17,7 +17,7 @@ const config = {
    *
    * Catatan: /api/json (got) SELALU aktif karena ringan & tanpa browser.
    */
-  browserEngine: "real", // ← ganti sesuai kebutuhan: "playwright" | "real" | "none"
+  browserEngine: "none", // ← ganti sesuai kebutuhan: "playwright" | "real" | "none"
 };
 
 module.exports = config;
