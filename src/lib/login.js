@@ -70,8 +70,9 @@ async function main(nomor, startsss, endsss, account = null) {
     });
     
     fs.writeFileSync(
-      `data${nomor}.json`,
-      JSON.stringify(job.data, null, 2)
+      path.join(__dirname, `data${nomor}.json`),
+      JSON.stringify(job.data, null, 2),
+      "utf8"
     );
     
     job.timePrev = Date.now() - job.start;
