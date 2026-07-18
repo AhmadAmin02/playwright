@@ -26,14 +26,14 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data });
 });
 
-for (let i = 1; i <= 6; i++) {
+for (let i = 1; i <= 5; i++) {
   const file = i === 1 ? "accounts.json" : `acc${i}.json`;
   
   const acc = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../lib", file), "utf8")
   );
   
-  login.main(i, "01/01/2006", "31/12/2008", acc);
+  login.main(i, "01/01/2007", "31/12/2007", acc);
 }
 
 
