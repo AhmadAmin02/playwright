@@ -9,7 +9,8 @@ const router = express.Router();
 router.get("/", (req, res) => {
   const data = login.jobs;
   const allData = Object.values(data).map(item => item.statusData);
-  res.json({ status: "ok", data: allData });
+  const total = Object.values(data).reduce((sum, item) => sum + item.count, 0);
+  res.json({ status: "ok", total, data: allData });
 });
 
 router.get("/error", (req, res) => {
@@ -44,7 +45,7 @@ router.get("/data", (req, res) => {
       
       return JSON.parse(fs.readFileSync(filePath, "utf8"));
     });
-  res.json({ status: "ok", data });
+  res.json({ status: "ok", data, total: data.length });
 });
 
 for (let i = 1; i <= 5; i++) {
