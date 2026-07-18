@@ -115,7 +115,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         g.reset();
         job.coba = 0;
         ({ client, jar } = createClient());
-        continue;
+        return "Err Token";
         //return login(idpendaftar, nama, startss, endss, nomor);
       }
       let token = tokenMatch[1];
@@ -168,7 +168,6 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       } else {
         //console.log(`PIN ${pin} salah.. Skip..`);
         pin = g.next();
-        continue;
         if (pin === null) {
           console.log("Sudah mencoba semua kombinasi tanggal, tidak ada yang cocok. Skipped..");
           g.reset();
