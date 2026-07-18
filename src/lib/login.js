@@ -101,10 +101,10 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       const { data: html } = await client.get('/login');
       const tokenMatch = html.match(/name="_token"\s+value="([^"]+)"/);
       if (!tokenMatch) {
-        console.log('CSRF token tidak ditemukan di halaman login');
-        return "Err";
+        //console.log('CSRF token tidak ditemukan di halaman login');
+        continue;
       }
-      const token = tokenMatch[1];
+      let token = tokenMatch[1];
       job.statusData = {
         token,
         nama,
@@ -220,23 +220,37 @@ function fmt(ms) {
   return time;
 }
 
+const errorBuffer = [];
+let saveTimer = null;
+
 function saveError(err) {
   countError++;
-  const filePath = path.join(__dirname, "../lib", "axios-errors.json");
   
-  let logs = [];
-  
-  if (fs.existsSync(filePath)) {
-    logs = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  }
-  
-  logs.push({
+  errorBuffer.push({
     waktu: new Date().toISOString(),
     ...err.toJSON(),
   });
   
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(logs, null, 2), "utf8");
+  if (saveTimer) return;
+  
+  saveTimer = setTimeout(() => {
+    const filePath = path.join(__dirname, "../lib", "axios-errors.json");
+    
+    let logs = [];
+    if (fs.existsSync(filePath)) {
+      try {
+        logs = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      } catch {}
+    }
+    
+    logs.push(...errorBuffer);
+    errorBuffer.length = 0;
+    
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(logs, null, 2), "utf8");
+    
+    saveTimer = null;
+  }, 5000); // tulis sekali tiap 5 detik
 }
 
 process.on("uncaughtException", err => {

@@ -15,8 +15,22 @@ router.get("/", (req, res) => {
 router.get("/error", (req, res) => {
   const filePath = path.join(__dirname, "../lib", "axios-error.json");
   
-  const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  res.json({ status: "ok", data });
+  if (!fs.existsSync(filePath)) {
+    return res.json({
+      status: "ok",
+      data: []
+    });
+  }
+  
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    res.json({ status: "ok", data });
+  } catch (err) {
+    res.json({
+      status: "ok",
+      data: []
+    });
+  }
 });
 
 router.get("/data", (req, res) => {
@@ -33,14 +47,14 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data });
 });
 
-for (let i = 1; i <= 4; i++) {
+for (let i = 1; i <= 5; i++) {
   const file = i === 1 ? "accounts.json" : `acc${i}.json`;
   
   const acc = JSON.parse(
     fs.readFileSync(path.join(__dirname, "../lib", file), "utf8")
   );
   
-  login.main(i, "01/01/2007", "31/12/2007", acc);
+  login.main(i, "01/01/2007", "31/12/2008", acc);
 }
 
 
