@@ -101,7 +101,7 @@ function loadAccounts() {
 
 async function login(idpendaftar, nama, startss, endss, nomor) {
   const job = jobs[nomor];
-  const { client, jar } = createClient();
+  let { client, jar } = createClient();
   const g = gen(startss, endss);
   let pin = g.next();
   try {
@@ -114,7 +114,9 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         jar.removeAllCookiesSync();
         g.reset();
         job.coba = 0;
+        ({ client, jar } = createClient());
         continue;
+        //return login(idpendaftar, nama, startss, endss, nomor);
       }
       let token = tokenMatch[1];
       job.statusData = {
