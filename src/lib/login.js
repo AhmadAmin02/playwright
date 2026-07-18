@@ -99,7 +99,8 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         coba: job.coba,
         waktuPrev: `Waktu: ${fmt(job.timePrev)} | Prev: ${job.prev}`,
         waktuNext: `Waktu: ${fmt(Date.now() - job.start)} | Next ID: ${job.next}`,
-        running: fmt(Date.now() - job.starts)
+        running: fmt(Date.now() - job.starts),
+        html
       };
       /*console.clear();
       console.log("---------------");
