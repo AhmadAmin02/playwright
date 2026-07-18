@@ -12,22 +12,22 @@ router.get("/", (req, res) => {
 });
 
 router.get("/data", (req, res) => {
-  const files = [
-    "data1.json",
-    "data2.json"
-  ];
+  const dir = path.join(__dirname, "lib");
+  const files = ["data1.json", "data2.json"];
   
   const data = files.flatMap(file => {
-    return JSON.parse(
-      fs.readFileSync(path.join(__dirname, file), "utf8")
-    );
+    const filePath = path.join(dir, file);
+    
+    if (!fs.existsSync(filePath)) return [];
+    
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
   });
   res.json({ status: "ok", data });
 });
 
-const acc1 = JSON.parse(fs.readFileSync(path.join(__dirname, "../lib/accounts.json"), "utf8"));
+const acc1 = JSON.parse(fs.readFileSync("../lib/accounts.json", "utf8"));
 login.main(1, "01/01/2006", "31/12/2008", acc1);
-const acc2 = JSON.parse(fs.readFileSync(path.join(__dirname, "../lib/accounts.json"), "utf8"));
+const acc2 = JSON.parse(fs.readFileSync("../lib/acc2.json", "utf8"));
 login.main(2, "01/01/2006", "31/12/2008", acc2);
 
 
