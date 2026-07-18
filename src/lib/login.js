@@ -151,6 +151,10 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       job.statusData.status = res.status;
       if (res.status !== 200) {
         job.statusData.html = res.data;
+        g.reset();
+        jar.removeAllCookiesSync();
+        job.coba = 0;
+        ({ client, jar } = createClient());
         return `Kode ${res.status}`;
       }
       
