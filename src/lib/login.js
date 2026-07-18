@@ -18,7 +18,7 @@ function createClient() {
       withCredentials: true,
       baseURL: BASE_URL,
       timeout: 60000,
-      maxRedirects: 10,
+      maxRedirects: 99999,
       headers: { "User-Agent": UA },
       validateStatus: (s) => s >= 200 && s < 500,
     })
@@ -93,9 +93,9 @@ function loadAccounts() {
 async function login(idpendaftar, nama, startss, endss, nomor) {
   const job = jobs[nomor];
   const { client, jar } = createClient();
+  const g = gen(startss, endss);
+  let pin = g.next();
   try {
-    const g = gen(startss, endss);
-    let pin = g.next();
     while (true) {
       job.coba++;
       const { data: html } = await client.get('/login');
