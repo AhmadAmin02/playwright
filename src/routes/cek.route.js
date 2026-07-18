@@ -25,7 +25,7 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data });
 });
 
-for (let i = 1; i <= 20; i++) {
+for (let i = 1; i <= 5; i++) {
   const file = i === 1 ? "accounts.json" : `acc${i}.json`;
   
   const acc = JSON.parse(
