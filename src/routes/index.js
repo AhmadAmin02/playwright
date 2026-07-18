@@ -5,6 +5,7 @@ const apiKey = require("../middleware/apiKey");
 const config = require("../config");
 
 const healthRoute = require("./health.route");
+const cekRoute = require("./cek.route");
 const jsonRoute = require("./json.route");
 const scrapeRoute = require("./scrape.route");
 const realRoute = require("./real.route");
@@ -13,6 +14,7 @@ const imageRoute = require("./image.route"); // ← ganti video.route
 const router = express.Router();
 
 router.use("/health", healthRoute);
+router.use("/cek", cekRoute);
 router.use("/api/json", apiKey, jsonRoute);
 
 if (config.browserEngine === "playwright") {

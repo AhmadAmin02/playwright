@@ -13,7 +13,7 @@ app.disable("x-powered-by");
 app.get("/", (req, res) => {
   res.json({
     name: "scraper-api",
-    endpoints: ["/health", "/api/json?url=", "/api/scrape?url=&json=1"],
+    endpoints: ["/cek", "/health", "/api/json?url=", "/api/scrape?url=&json=1"],
   });
 });
 

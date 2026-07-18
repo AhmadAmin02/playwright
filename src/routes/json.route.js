@@ -2,7 +2,7 @@
 
 const express = require("express");
 const { getJson } = require("../lib/getJson");
-const SIGI_MARKER = 'id="__UNIVERSAL_DATA_FOR_REHYDRATION__"';
+const SIGI_MARKER = '';
 
 const router = express.Router();
 
@@ -23,7 +23,7 @@ router.get("/", async (req, res, next) => {
 module.exports = router;
 
 function test(html, dataOnly) {
-  const markerPos = html.indexOf(SIGI_MARKER);
+  const markerPos = html.indexOf('id="__UNIVERSAL_DATA_FOR_REHYDRATION__"');
   if (markerPos === -1) return "SIGI script tag not found in HTML";
   
   const gtPos = html.indexOf(">", markerPos);
