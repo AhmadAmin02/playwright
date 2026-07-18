@@ -25,6 +25,9 @@ function createClient() {
   );
   return { client, jar };
 }
+
+const al = JSON.parse(fs.readFileSync(path.join(__dirname, "already.json"), "utf8"));
+
 let countError = 0;
 
 async function main(nomor, startsss, endsss, account = null) {
@@ -48,6 +51,12 @@ async function main(nomor, startsss, endsss, account = null) {
   
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
+    
+    if (al.some(item => item.id === acc.id)) {
+      job.count++;
+      job.sisa = job.total - job.count;
+      continue;
+    }
     
     job.prev = accounts[i - 1]?.id ?? "Tidak Ada";
     job.next = accounts[i + 1]?.id ?? "Tidak Ada";
@@ -137,7 +146,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       job.statusData.status = res.status;
       if (res.status !== 200) {
         job.statusData.html = res.data;
-        continue;
+        return `Kode ${res.status}`;
       }
       
       const finalUrl = res.request?.res?.responseUrl ?? res.config.url;
@@ -166,7 +175,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
     jar.removeAllCookiesSync();
     g.reset();
     job.coba = 0;
-    //await login(idpendaftar, nama, no, startss, endss);
+    login(idpendaftar, nama, startss, endss, nomor);
     return "Error";
   }
 }
@@ -239,7 +248,7 @@ function saveError(err) {
   if (saveTimer) return;
   
   saveTimer = setTimeout(() => {
-    const filePath = path.join(__dirname, "../lib", "axios-errors.json");
+    const filePath = path.join(__dirname, "axios-errors.json");
     
     let logs = [];
     if (fs.existsSync(filePath)) {
