@@ -245,9 +245,31 @@ let saveTimer = null;
 function saveError(err) {
   countError++;
   
+  let data;
+  
+  if (typeof err?.toJSON === "function") {
+    // AxiosError
+    data = err.toJSON();
+  } else if (err instanceof Error) {
+    // Error biasa
+    data = {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    };
+  } else if (typeof err === "object" && err !== null) {
+    // Object biasa
+    data = err;
+  } else {
+    // String, number, boolean, dll.
+    data = {
+      value: err,
+    };
+  }
+  
   errorBuffer.push({
     waktu: new Date().toISOString(),
-    ...err.toJSON(),
+    ...data,
   });
   
   if (saveTimer) return;
@@ -256,20 +278,27 @@ function saveError(err) {
     const filePath = path.join(__dirname, "axios-errors.json");
     
     let logs = [];
+    
     if (fs.existsSync(filePath)) {
       try {
         logs = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      } catch {}
+      } catch {
+        logs = [];
+      }
     }
     
     logs.push(...errorBuffer);
     errorBuffer.length = 0;
     
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify(logs, null, 2), "utf8");
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify(logs, null, 2),
+      "utf8"
+    );
     
     saveTimer = null;
-  }, 5000); // tulis sekali tiap 5 detik
+  }, 5000);
 }
 
 process.on("uncaughtException", err => {
