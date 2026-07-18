@@ -100,7 +100,6 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         waktuPrev: `Waktu: ${fmt(job.timePrev)} | Prev: ${job.prev}`,
         waktuNext: `Waktu: ${fmt(Date.now() - job.start)} | Next ID: ${job.next}`,
         running: fmt(Date.now() - job.starts),
-        html
       };
       /*console.clear();
       console.log("---------------");
@@ -128,6 +127,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
           'Origin': BASE_URL,
         }
       });
+      job.statusData.datas = res.data;
       
       const finalUrl = res.request?.res?.responseUrl ?? res.config.url;
       if (!finalUrl.includes('/login')) {
