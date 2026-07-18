@@ -12,23 +12,28 @@ router.get("/", (req, res) => {
 });
 
 router.get("/data", (req, res) => {
-  const dir = path.join(__dirname, "lib");
-  const files = ["data1.json", "data2.json"];
+  const dir = path.join(__dirname, "../lib");
   
-  const data = files.flatMap(file => {
-    const filePath = path.join(dir, file);
-    
-    if (!fs.existsSync(filePath)) return [];
-    
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
-  });
+  const data = Array.from({ length: 20 }, (_, i) => `data${i + 1}.json`)
+    .flatMap(file => {
+      const filePath = path.join(dir, file);
+      
+      if (!fs.existsSync(filePath)) return [];
+      
+      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    });
   res.json({ status: "ok", data });
 });
 
-const acc1 = JSON.parse(fs.readFileSync(path.join(__dirname, "../lib/accounts.json"), "utf8"));
-login.main(1, "01/01/2006", "31/12/2008", acc1);
-const acc2 = JSON.parse(fs.readFileSync(path.join(__dirname, "../lib/acc2.json"), "utf8"));
-login.main(2, "01/01/2006", "31/12/2008", acc2);
+for (let i = 1; i <= 20; i++) {
+  const file = i === 1 ? "accounts.json" : `acc${i}.json`;
+  
+  const acc = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../lib", file), "utf8")
+  );
+  
+  login.main(i, "01/01/2006", "31/12/2008", acc);
+}
 
 
 module.exports = router;

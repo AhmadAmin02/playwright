@@ -7,6 +7,7 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 const app = express();
 
 app.use(express.json());
+app.set("json spaces", 2);
 app.disable("x-powered-by");
 
 // Root info

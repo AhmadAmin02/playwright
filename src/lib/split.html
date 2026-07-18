@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fetch JSON Split Rata 5 Page</title>
+  <style>
+    body { font-family: Arial; padding: 10px; }
+    button { margin: 5px; padding: 8px; }
+    pre { background: #111; color: #0f0; padding: 10px; overflow:auto; }
+  </style>
+</head>
+<body>
+
+<h3>Auto Fetch JSON → Split Rata 5 Page</h3>
+
+<div>
+  <button onclick="prevPage()">Prev</button>
+  <span id="pageInfo">Loading...</span>
+  <button onclick="nextPage()">Next</button>
+</div>
+
+<button onclick="copyPage()">Copy Page Ini</button>
+<pre id="output">Loading data...</pre>
+
+<script>
+let pages = [];
+let current = 0;
+
+const URL = "datasnbt.json"; // ganti kalau pakai link
+
+window.onload = () => {
+  loadData();
+};
+
+async function loadData() {
+  try {
+    const res = await fetch(URL);
+    const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      document.getElementById("output").textContent = "JSON harus array!";
+      return;
+    }
+
+    splitBalanced(data);
+    current = 0;
+    render();
+
+  } catch (e) {
+    document.getElementById("output").textContent =
+      "Gagal load JSON: " + e;
+  }
+}
+
+// 🔥 SPLIT RATA (572 -> 5 bagian adil)
+function splitBalanced(data) {
+  pages = [];
+
+  const totalPages = 20;
+  const base = Math.floor(data.length / totalPages);
+  const remainder = data.length % totalPages;
+
+  let start = 0;
+
+  for (let i = 0; i < totalPages; i++) {
+    let size = base + (i < remainder ? 1 : 0);
+    pages.push(data.slice(start, start + size));
+    start += size;
+  }
+}
+
+function render() {
+  document.getElementById("output").textContent =
+    JSON.stringify(pages[current], null, 2);
+
+  document.getElementById("pageInfo").innerText =
+    `Page ${current + 1} / ${pages.length} (${pages[current].length} data)`;
+}
+
+function nextPage() {
+  if (current < pages.length - 1) {
+    current++;
+    render();
+  }
+}
+
+function prevPage() {
+  if (current > 0) {
+    current--;
+    render();
+  }
+}
+
+function copyPage() {
+  navigator.clipboard.writeText(
+    JSON.stringify(pages[current], null, 2)
+  );
+  //alert(`Page ${current + 1} dicopy!`);
+}
+</script>
+
+</body>
+</html>
