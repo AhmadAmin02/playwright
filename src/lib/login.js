@@ -110,7 +110,10 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       const { data: html } = await client.get('/login');
       const tokenMatch = html.match(/name="_token"\s+value="([^"]+)"/);
       if (!tokenMatch) {
-        console.log('CSRF token tidak ditemukan di halaman login');
+        //console.log('CSRF token tidak ditemukan di halaman login');
+        jar.removeAllCookiesSync();
+        g.reset();
+        job.coba = 0;
         continue;
       }
       let token = tokenMatch[1];
