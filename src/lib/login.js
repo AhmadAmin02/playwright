@@ -92,15 +92,18 @@ function loadAccounts() {
 
 async function login(idpendaftar, nama, startss, endss, nomor) {
   const job = jobs[nomor];
+  const { client, jar } = createClient();
   try {
-    const { client, jar } = createClient();
     const g = gen(startss, endss);
     let pin = g.next();
     while (true) {
       job.coba++;
       const { data: html } = await client.get('/login');
       const tokenMatch = html.match(/name="_token"\s+value="([^"]+)"/);
-      if (!tokenMatch) console.log('CSRF token tidak ditemukan di halaman login');
+      if (!tokenMatch) {
+        console.log('CSRF token tidak ditemukan di halaman login');
+        return "Err";
+      }
       const token = tokenMatch[1];
       job.statusData = {
         token,
