@@ -8,7 +8,8 @@ const router = express.Router();
 
 router.get("/", (req, res) => {
   const data = login.jobs;
-  res.json({ status: "ok", data });
+  const allData = Object.values(data).map(item => item.statusData);
+  res.json({ status: "ok", data: allData });
 });
 
 router.get("/data", (req, res) => {
@@ -25,7 +26,7 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data });
 });
 
-for (let i = 1; i <= 10; i++) {
+for (let i = 1; i <= 8; i++) {
   const file = i === 1 ? "accounts.json" : `acc${i}.json`;
   
   const acc = JSON.parse(
