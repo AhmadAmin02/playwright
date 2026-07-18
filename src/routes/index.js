@@ -14,7 +14,7 @@ const imageRoute = require("./image.route"); // ← ganti video.route
 const router = express.Router();
 
 router.use("/health", healthRoute);
-router.use("/cek", cekRoute);
+//router.use("/cek", cekRoute);
 router.use("/api/json", apiKey, jsonRoute);
 
 if (config.browserEngine === "playwright") {
