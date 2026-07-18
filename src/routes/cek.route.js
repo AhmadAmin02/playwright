@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get("/", (req, res) => {
   const data = login.jobs;
-  res.json({ status: "ok", data: data.statusData });
+  res.json({ status: "ok", data });
 });
 
 router.get("/data", (req, res) => {
