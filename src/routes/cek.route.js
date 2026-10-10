@@ -104,181 +104,220 @@ router.get('/app', (req, res) => {
         }
 
         body {
-            margin: 0; padding: 0;
-            font-family: 'Inter', sans-serif;
+            margin: 0; padding: 0; font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             background-image: 
                 radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
                 radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
                 radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
             background-size: cover; background-attachment: fixed;
-            color: var(--text-primary);
-            min-height: 100vh; display: flex; justify-content: center;
+            color: var(--text-primary); min-height: 100vh;
         }
 
-        .container {
-            width: 100%; max-width: 1200px; padding: 2rem;
-        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
 
         /* Header Card */
         .header-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px; padding: 2rem; margin-bottom: 2rem;
+            background: var(--card-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 2rem; margin-bottom: 1.5rem;
             display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
-
-        .header-info h1 { margin: 0; font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; }
-        .header-info p { margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .header-info h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
+        .header-info p { margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
         
         .live-indicator {
             width: 8px; height: 8px; background-color: var(--success);
-            border-radius: 50%; display: inline-block;
-            box-shadow: 0 0 8px var(--success);
-            animation: pulse 1.5s infinite;
+            border-radius: 50%; display: inline-block; margin-right: 6px;
+            box-shadow: 0 0 8px var(--success); animation: pulse 1.5s infinite;
         }
-
         @keyframes pulse {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        .stat-box { text-align: right; }
-        .stat-label { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; }
-        .stat-value { font-size: 2.5rem; font-weight: 700; color: var(--accent-color); line-height: 1.2; }
+        .action-area { display: flex; flex-direction: column; align-items: flex-end; gap: 1rem; }
+        .stat-label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent-color); line-height: 1; text-align: right;}
 
-        /* Grid Layout */
-        .jobs-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 1.5rem;
+        /* Styled Button */
+        .btn-fetch {
+            background: var(--accent-color); color: #fff; border: none;
+            padding: 10px 20px; border-radius: 8px; font-weight: 600;
+            font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); font-family: inherit;
         }
+        .btn-fetch:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
+        .btn-fetch:active { transform: translateY(0); }
 
-        /* Job Card */
+        /* JSON Result Panel */
+        #json-panel {
+            background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
+            display: none; backdrop-filter: blur(12px); animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .json-panel-title { margin: 0 0 1rem 0; font-size: 1rem; color: #93c5fd; font-weight: 600; display: flex; justify-content: space-between;}
+        .close-btn { cursor: pointer; color: #94a3b8; font-size: 1.2rem; line-height: 1; }
+        
+        table.static-data { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.9rem; }
+        table.static-data th, table.static-data td { padding: 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        table.static-data th { color: #94a3b8; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.8rem; text-transform: uppercase; }
+
+        /* Jobs Grid */
+        .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; }
+        
         .job-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 1.5rem;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
+            background: var(--card-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color); border-radius: 14px;
+            padding: 1.5rem; position: relative; transition: transform 0.2s, box-shadow 0.2s;
         }
-
         .job-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-
         .job-card.updated::after {
             content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(255,255,255,0.06); animation: flash 0.5s ease-out; pointer-events: none;
         }
-
         @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* Card Header */
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-        .job-meta { color: var(--text-secondary); font-size: 0.8rem; font-family: var(--font-mono); }
-        .job-name { margin: 0.2rem 0; font-size: 1.2rem; font-weight: 600; color: #fff; }
+        .job-meta { color: var(--text-secondary); font-size: 0.75rem; font-family: var(--font-mono); display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+        .badge-pepek { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: #e2e8f0; }
         
-        .job-status {
-            padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
-        }
+        .job-name { margin: 0; font-size: 1.2rem; font-weight: 600; color: #fff; }
+        .job-status { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; }
         .status-running { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
         .status-idle { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
-        .status-failed { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
-
-        /* Card Stats Grid */
-        .stats-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0;
-        }
-        .stat-item {
-            background: var(--card-inner); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2);
-            display: flex; flex-direction: column; gap: 4px;
-        }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
+        .stat-item { background: var(--card-inner); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 4px; }
         .stat-item .lbl { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 500; }
         .stat-item .val { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; font-family: var(--font-mono); }
 
-        /* Card Footer */
-        .card-footer {
-            margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color);
-            display: flex; flex-direction: column; gap: 6px;
-        }
+        .card-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .footer-text { font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono); }
-        .footer-text span { color: #94a3b8; }
-
-        @media (max-width: 600px) {
-            .header-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .jobs-grid { grid-template-columns: 1fr; }
-        }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <!-- Header -->
         <div class="header-card">
             <div class="header-info">
                 <h1>Sistem Monitor</h1>
-                <p><span class="live-indicator"></span> Menunggu data stream...</p>
+                <p><span class="live-indicator"></span> Koneksi stream aktif</p>
             </div>
-            <div class="stat-box">
-                <div class="stat-label">Total Data</div>
-                <div class="stat-value" id="total-count">0</div>
+            <div class="action-area">
+                <div>
+                    <div class="stat-label">Total Data</div>
+                    <div class="stat-value" id="total-count">0</div>
+                </div>
+                <!-- Tombol Manual Fetch -->
+                <button class="btn-fetch" id="btn-load-json">Ambil Data Statis</button>
             </div>
         </div>
 
-        <div class="jobs-grid" id="jobs-container">
-            <!-- Data akan di-render di sini -->
+        <!-- Panel untuk Data.json -->
+        <div id="json-panel">
+            <h3 class="json-panel-title">
+                Hasil data.json 
+                <span class="close-btn" onclick="document.getElementById('json-panel').style.display='none'">&times;</span>
+            </h3>
+            <table class="static-data">
+                <thead>
+                    <tr>
+                        <th>Nomor</th>
+                        <th>Nama</th>
+                        <th>ID</th>
+                        <th>Ya (Tgl)</th>
+                    </tr>
+                </thead>
+                <tbody id="json-table-body">
+                    <!-- Diisi lewat JS -->
+                </tbody>
+            </table>
         </div>
+
+        <!-- Grid untuk Live Stream -->
+        <div class="jobs-grid" id="jobs-container"></div>
     </div>
 
     <script>
+        // =====================================
+        // LOGIKA FETCH DATA.JSON (KLIK MANUAL)
+        // =====================================
+        document.getElementById('btn-load-json').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-load-json');
+            const panel = document.getElementById('json-panel');
+            const tbody = document.getElementById('json-table-body');
+            
+            btn.innerText = "Memuat...";
+            btn.disabled = true;
+
+            try {
+                // Request manual hanya saat tombol diklik
+                const response = await fetch('/cek/data');
+                const result = await response.json();
+
+                // Render tabel statis
+                tbody.innerHTML = '';
+                result.data.forEach(item => {
+                    tbody.innerHTML += \`
+                        <tr>
+                            <td>#\${item.nomor}</td>
+                            <td>\${item.nama}</td>
+                            <td>\${item.id}</td>
+                            <td style="color: #93c5fd;">\${item.pin}</td>
+                        </tr>
+                    \`;
+                });
+
+                panel.style.display = 'block';
+                btn.innerText = "Ambil Data Statis";
+            } catch (error) {
+                console.error("Gagal mengambil data:", error);
+                btn.innerText = "Gagal Fetch!";
+                setTimeout(() => btn.innerText = "Ambil Data Statis", 2000);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // =====================================
+        // LOGIKA STREAM DATA (LIVE)
+        // =====================================
         const totalCountEl = document.getElementById('total-count');
         const jobsContainer = document.getElementById('jobs-container');
-        const statusText = document.querySelector('.header-info p');
-        const liveIndicator = document.querySelector('.live-indicator');
-
         const eventSource = new EventSource('/cek');
 
-        // Mapping Status Angka ke Teks & Warna
         function getStatusInfo(statusInt) {
-            const num = parseInt(statusInt);
-            if (num === 1) return { text: 'RUNNING', class: 'status-running' };
-            if (num === 2 || num === -1) return { text: 'ERROR', class: 'status-failed' };
-            return { text: 'STANDBY', class: 'status-idle' }; // Default status 0
+            return (parseInt(statusInt) === 1) 
+                ? { text: 'RUNNING', class: 'status-running' }
+                : { text: 'STANDBY', class: 'status-idle' };
         }
 
-        // Generate HTML untuk satu Card
         function buildCardHTML(job) {
             const status = getStatusInfo(job.status);
+            // ======= VARIABEL PEPEK ADA DI SINI ======= //
             return \`
                 <div class="card-header">
                     <div>
-                        <div class="job-meta">#\${job.nomor} • ID: \${job.id}</div>
+                        <div class="job-meta">
+                            <span>#\${job.nomor}</span> • 
+                            <span>ID: \${job.id}</span> • 
+                            <span class="badge-pepek">Try Pin: \${job.tryPin}</span>
+                        </div>
                         <h3 class="job-name">\${job.nama}</h3>
                     </div>
                     <span class="job-status \${status.class}">\${status.text}</span>
                 </div>
                 
                 <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="lbl">Progress</span>
-                        <span class="val">\${job.count}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="lbl">Sisa</span>
-                        <span class="val">\${job.sisa}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="lbl">Err / Coba</span>
-                        <span class="val">\${job.err} / \${job.coba}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="lbl">Running</span>
-                        <span class="val">\${job.running}</span>
-                    </div>
+                    <div class="stat-item"><span class="lbl">Progress</span><span class="val">\${job.count}</span></div>
+                    <div class="stat-item"><span class="lbl">Sisa</span><span class="val">\${job.sisa}</span></div>
+                    <div class="stat-item"><span class="lbl">Err / Coba</span><span class="val">\${job.err} / \${job.coba}</span></div>
+                    <div class="stat-item"><span class="lbl">Running</span><span class="val">\${job.running}</span></div>
                 </div>
 
                 <div class="card-footer">
@@ -288,49 +327,27 @@ router.get('/app', (req, res) => {
             \`;
         }
 
-        eventSource.onopen = () => {
-            statusText.innerHTML = '<span class="live-indicator"></span> Terhubung & Sinkronisasi Realtime';
-            liveIndicator.style.backgroundColor = 'var(--success)';
-        };
-
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
-            
-            if(totalCountEl.innerText !== response.total.toString()) {
-                totalCountEl.innerText = response.total;
-            }
+            totalCountEl.innerText = response.total;
 
-            renderJobs(response.data);
-        };
+            if (!response.data || response.data.length === 0) return;
 
-        eventSource.onerror = () => {
-            statusText.innerHTML = '<span class="live-indicator" style="background-color: var(--danger); animation: none;"></span> Koneksi Terputus...';
-        };
-
-        function renderJobs(jobsArray) {
-            if (!jobsArray || jobsArray.length === 0) {
-                jobsContainer.innerHTML = '<div style="color:#94a3b8; grid-column: 1/-1; text-align:center;">Tidak ada data tersedia.</div>';
-                return;
-            }
-
-            jobsArray.forEach(job => {
+            response.data.forEach(job => {
                 const cardId = 'card-' + job.id;
                 const existingCard = document.getElementById(cardId);
-                const jobString = JSON.stringify(job); // Untuk deteksi perubahan data
+                const jobString = JSON.stringify(job);
                 
                 if (existingCard) {
-                    // Cek jika data mentahnya beda, baru kita re-render supaya ada animasi kedip
                     if(existingCard.dataset.raw !== jobString) {
                         existingCard.dataset.raw = jobString;
                         existingCard.innerHTML = buildCardHTML(job);
                         
-                        // Trigger CSS flash animation
                         existingCard.classList.remove('updated');
-                        void existingCard.offsetWidth; // Force reflow
+                        void existingCard.offsetWidth; 
                         existingCard.classList.add('updated');
                     }
                 } else {
-                    // Render card baru
                     const card = document.createElement('div');
                     card.className = 'job-card';
                     card.id = cardId;
@@ -339,13 +356,7 @@ router.get('/app', (req, res) => {
                     jobsContainer.appendChild(card);
                 }
             });
-
-            // Hapus card yang ID-nya sudah hilang dari response server
-            const currentIds = jobsArray.map(j => 'card-' + j.id);
-            document.querySelectorAll('.job-card').forEach(el => {
-                if(!currentIds.includes(el.id)) el.remove();
-            });
-        }
+        };
     </script>
 </body>
 </html>
