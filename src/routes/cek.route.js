@@ -5,46 +5,42 @@ const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
 const router = express.Router();
-const { Readable } = require('stream');
 
+// Asumsi router sudah dideklarasikan
 router.get("/", (req, res) => {
-  const data = login.jobs;
-  const keys = Object.keys(data);
-  
-  // Kita harus menghitung total terlebih dahulu karena posisinya di awal JSON
-  const total = keys.reduce((sum, key) => sum + data[key].count, 0);
-
-  // Set header agar browser/client tahu bahwa yang diterima adalah JSON
-  res.setHeader('Content-Type', 'application/json');
-
-  // 1. Tulis bagian awal object JSON dan buka array untuk "data"
-  res.write(`{"status":"ok","total":${total},"data":[`);
-
-  let index = 0;
-
-  // 2. Buat Readable stream untuk mengirim data item satu per satu
-  const stream = new Readable({
-    read() {
-      // Jika semua data sudah diproses, tutup array dan object JSON
-      if (index >= keys.length) {
-        this.push(']}');
-        this.push(null); // null menandakan stream selesai (EOF)
-        return;
-      }
-
-      const item = data[keys[index]].statusData;
-      
-      // Tambahkan koma sebelum item jika ini bukan elemen pertama
-      const prefix = index === 0 ? '' : ',';
-      
-      // Kirim potongan data (chunk) sebagai string
-      this.push(prefix + JSON.stringify(item));
-      index++;
-    }
+  // 1. Set header khusus untuk menjaga koneksi tetap terbuka (SSE)
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive"
   });
 
-  // 3. Salurkan (pipe) stream langsung ke response Express
-  stream.pipe(res);
+  // 2. Buat fungsi untuk mengekstrak dan mengirim data terbaru
+  const sendData = () => {
+    // Ambil data terbaru dari variabel yang berubah-ubah
+    const data = login.jobs; 
+    const allData = Object.values(data).map(item => item.statusData);
+    const total = Object.values(data).reduce((sum, item) => sum + item.count, 0);
+
+    // Format payload menjadi string JSON
+    const payload = JSON.stringify({ status: "ok", total, data: allData });
+
+    // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
+    res.write(`data: ${payload}\n\n`);
+  };
+
+  // Kirim data langsung saat client pertama kali connect
+  sendData();
+
+  // 3. Jalankan interval untuk mengirim data setiap 1 detik (1000 ms)
+  const intervalId = setInterval(sendData, 1000);
+
+  // 4. SANGAT PENTING: Hentikan interval jika client menutup tab browser / disconnect
+  // Jika ini tidak ditambahkan, memori server akan bocor (memory leak)
+  req.on("close", () => {
+    clearInterval(intervalId);
+    res.end();
+  });
 });
 
 router.get("/error", (req, res) => {
