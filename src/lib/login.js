@@ -66,6 +66,7 @@ async function main(nomor, startsss, endsss, account) {
     job.sisa = job.total - job.count;
     
     job.data.push({
+      nomor,
       id: acc.id,
       pin
     });
