@@ -29,7 +29,7 @@ function createClient() {
 let countError = 0;
 
 async function main(nomor, startsss, endsss, account) {
-  const accounts = account || loadAccounts();
+  const accounts = account;
   
   jobs[nomor] = {
     statusData: {},
