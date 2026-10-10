@@ -48,6 +48,29 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data, total: data.length });
 });
 
+function generateSequence(prefix) {
+  const result = [];
+  
+  // Looping dari 1 sampai 9999
+  for (let i = 1; i <= 9999; i++) {
+    // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
+    const suffix = String(i).padStart(4, '0');
+    result.push({
+      id: `${prefix}${suffix}`,
+      nama: `Nama ${suffix}`
+    });
+  }
+  
+  return result;
+}
+
+function dapatkanHalaman(array, page, limit) {
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+  
+  return array.slice(startIndex, endIndex);
+}
+
 /*for (let i = 1; i <= 5; i++) {
   const file = i === 1 ? "accounts.json" : `acc${i}.json`;
   
@@ -57,6 +80,9 @@ router.get("/data", (req, res) => {
   
   }
   */
-login.main(0, "01/01/2006", "31/12/2008");
+const id = generateSequence("2506");
+login.main(0, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 1, 20));
+login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 2, 20));
+login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 20));
 
 module.exports = router;
