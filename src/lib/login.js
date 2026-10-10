@@ -67,6 +67,7 @@ async function main(nomor, startsss, endsss, account) {
     
     job.data.push({
       nomor,
+      nama: acc.nama,
       id: acc.id,
       pin
     });

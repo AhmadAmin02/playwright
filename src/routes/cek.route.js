@@ -51,8 +51,8 @@ router.get("/data", (req, res) => {
 function generateSequence(prefix) {
   const result = [];
   
-  // Looping dari 1 sampai 9999
-  for (let i = 1; i <= 9999; i++) {
+  // Looping dari 0 sampai 9999
+  for (let i = 0; i <= 9999; i++) {
     // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
     const suffix = String(i).padStart(4, '0');
     result.push({
