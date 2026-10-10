@@ -26,12 +26,10 @@ function createClient() {
   return { client, jar };
 }
 
-const al = JSON.parse(fs.readFileSync(path.join(__dirname, "already.json"), "utf8"));
-
 let countError = 0;
 
-async function main(nomor, startsss, endsss, account = null) {
-  const accounts = account ?? loadAccounts();
+async function main(nomor, startsss, endsss) {
+  const accounts = loadAccounts();
   
   jobs[nomor] = {
     statusData: {},
@@ -51,12 +49,6 @@ async function main(nomor, startsss, endsss, account = null) {
   
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
-    
-    if (al.some(item => item.id === acc.id)) {
-      job.count++;
-      job.sisa = job.total - job.count;
-      continue;
-    }
     
     job.prev = accounts[i - 1]?.id ?? "Tidak Ada";
     job.next = accounts[i + 1]?.id ?? "Tidak Ada";
@@ -91,12 +83,27 @@ async function main(nomor, startsss, endsss, account = null) {
 }
 
 function loadAccounts() {
-  const file = "./accounts.json";
+  /*const file = "./accounts.json";
   if (fs.existsSync(file)) {
     const arr = JSON.parse(fs.readFileSync(file, "utf8"));
     if (!Array.isArray(arr)) throw new Error("accounts.json harus berupa array");
     return arr;
+    }*/
+  const idd = generateSequence("2506");
+  return idd;
+}
+
+function generateSequence(prefix) {
+  const result = [];
+  
+  // Looping dari 1 sampai 9999
+  for (let i = 1; i <= 9999; i++) {
+    // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
+    const suffix = String(i).padStart(4, '0');
+    result.push(`${prefix}${suffix}`);
   }
+  
+  return result;
 }
 
 async function login(idpendaftar, nama, startss, endss, nomor) {

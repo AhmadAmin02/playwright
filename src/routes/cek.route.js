@@ -57,6 +57,6 @@ router.get("/data", (req, res) => {
   
   }
   */
-login.main(0, "01/01/2006", "31/12/2008", "acc.json");
+login.main(0, "01/01/2006", "31/12/2008");
 
 module.exports = router;
