@@ -175,6 +175,12 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         g.reset();
         jar.removeAllCookiesSync();
         return pin;
+      } else if (finalUrl.includes("pembayaran")) {
+        job.coba = 0;
+        job.timePrev = Date.now() - job.start;
+        g.reset();
+        jar.removeAllCookiesSync();
+        return "Pembayaran Belum Lunas Dengan PIN: " + pin;
       } else {
         //console.log(`PIN ${pin} salah.. Skip..`);
         pin = g.next();

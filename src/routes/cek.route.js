@@ -81,8 +81,9 @@ function dapatkanHalaman(array, page, limit) {
   }
   */
 const id = generateSequence("2506");
-login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 4, 20));
-login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 5, 20));
-login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 6, 20));
+login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 1, 200));
+login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 2, 200));
+login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 200));
+login.main(4, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 4, 200));
 
 module.exports = router;
