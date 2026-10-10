@@ -5,12 +5,46 @@ const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
 const router = express.Router();
+const { Readable } = require('stream');
 
 router.get("/", (req, res) => {
   const data = login.jobs;
-  const allData = Object.values(data).map(item => item.statusData);
-  const total = Object.values(data).reduce((sum, item) => sum + item.count, 0);
-  res.json({ status: "ok", total, data: allData });
+  const keys = Object.keys(data);
+  
+  // Kita harus menghitung total terlebih dahulu karena posisinya di awal JSON
+  const total = keys.reduce((sum, key) => sum + data[key].count, 0);
+
+  // Set header agar browser/client tahu bahwa yang diterima adalah JSON
+  res.setHeader('Content-Type', 'application/json');
+
+  // 1. Tulis bagian awal object JSON dan buka array untuk "data"
+  res.write(`{"status":"ok","total":${total},"data":[`);
+
+  let index = 0;
+
+  // 2. Buat Readable stream untuk mengirim data item satu per satu
+  const stream = new Readable({
+    read() {
+      // Jika semua data sudah diproses, tutup array dan object JSON
+      if (index >= keys.length) {
+        this.push(']}');
+        this.push(null); // null menandakan stream selesai (EOF)
+        return;
+      }
+
+      const item = data[keys[index]].statusData;
+      
+      // Tambahkan koma sebelum item jika ini bukan elemen pertama
+      const prefix = index === 0 ? '' : ',';
+      
+      // Kirim potongan data (chunk) sebagai string
+      this.push(prefix + JSON.stringify(item));
+      index++;
+    }
+  });
+
+  // 3. Salurkan (pipe) stream langsung ke response Express
+  stream.pipe(res);
 });
 
 router.get("/error", (req, res) => {
@@ -84,7 +118,5 @@ const id = generateSequence("2506");
 login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 1, 200));
 login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 2, 200));
 login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 200));
-login.main(4, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 4, 200));
-login.main(5, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 5, 200));
 
 module.exports = router;
