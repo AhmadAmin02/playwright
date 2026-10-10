@@ -23,7 +23,7 @@ if (config.browserEngine === "playwright") {
   router.use("/api/real", apiKey, realRoute);
 }
 
-router.use("/shots", imageRoute); // ← publik, ganti /videos
+router.use("/shots", imageRoute); // ← publik, ganti /video
 
 console.log(`🧭 Browser engine aktif: ${config.browserEngine}`);
 
