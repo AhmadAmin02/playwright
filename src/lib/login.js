@@ -100,7 +100,10 @@ function generateSequence(prefix) {
   for (let i = 1; i <= 9999; i++) {
     // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
     const suffix = String(i).padStart(4, '0');
-    result.push(`${prefix}${suffix}`);
+    result.push({
+      id: `${prefix}${suffix}`,
+      nama: `Nama ${suffix}`
+    });
   }
   
   return result;
