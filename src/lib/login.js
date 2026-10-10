@@ -169,19 +169,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
       }
       
       const finalUrl = res.request?.res?.responseUrl ?? res.config.url;
-      if (!finalUrl.includes('/login')) {
-        job.coba = 0;
-        job.timePrev = Date.now() - job.start;
-        g.reset();
-        jar.removeAllCookiesSync();
-        return pin;
-      } else if (finalUrl.includes("pembayaran")) {
-        job.coba = 0;
-        job.timePrev = Date.now() - job.start;
-        g.reset();
-        jar.removeAllCookiesSync();
-        return "Pembayaran Belum Lunas Dengan PIN: " + pin;
-      } else {
+      if (finalUrl.includes('/login')) {
         //console.log(`PIN ${pin} salah.. Skip..`);
         pin = g.next();
         if (pin === null) {
@@ -191,6 +179,18 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
           jar.removeAllCookiesSync();
           return "Tidak Ada";
         }
+      } else if (finalUrl.includes("pembayaran")) {
+        job.coba = 0;
+        job.timePrev = Date.now() - job.start;
+        g.reset();
+        jar.removeAllCookiesSync();
+        return "Pembayaran Belum Lunas Dengan PIN: " + pin;
+      } else {
+        job.coba = 0;
+        job.timePrev = Date.now() - job.start;
+        g.reset();
+        jar.removeAllCookiesSync();
+        return pin;
       }
     }
   } catch (err) {
