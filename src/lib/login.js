@@ -70,7 +70,7 @@ async function main(nomor, startsss, endsss, account) {
 
     if (emitter.listenerCount("stop")) {
       console.log("Proses dihentikan oleh pengguna.");
-      setStopped(false); // Reset status berhenti setelah proses dihentikan
+      //setStopped(false); // Reset status berhenti setelah proses dihentikan
       throw new Error("Proses dihentikan oleh pengguna.");
     }
     
