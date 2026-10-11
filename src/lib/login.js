@@ -51,7 +51,6 @@ async function main(nomor, startsss, endsss, account) {
   };
   
   const job = jobs[nomor];
-  console.log("job:", job);
   
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
@@ -60,12 +59,12 @@ async function main(nomor, startsss, endsss, account) {
     job.next = accounts[i + 1]?.id ?? "Tidak Ada";
     job.start = Date.now();
     
-    if (emitter.listenerCount("stop") && global.shouldStop) {
+    if (emitter.listenerCount("stop") || global.shouldStop) {
       console.log("Proses dihentikan oleh pengguna.");
       //setStopped(false); // Reset status berhenti setelah proses dihentikan
       throw new Error("Proses dihentikan oleh pengguna.");
     }
-    
+
     const pin = await login(
       acc.id,
       acc.nama,
