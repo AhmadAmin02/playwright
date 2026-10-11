@@ -101,6 +101,10 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data, total: data.length, berhasil, gagal });
 });
 
+router.get("/reset", (req, res) => {
+  login.jobs = {};
+  res.json({ status: "ok", message: "Data berhasil direset." });
+});
 // 1. Set global HANYA untuk melacak nomor (1 sampai 5)
 const activeSlots = new Set();
 
