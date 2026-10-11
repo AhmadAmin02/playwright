@@ -5,7 +5,6 @@ const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
 const router = express.Router();
-const { emitter, setStopped } = require("../lib/state");
 
 // Asumsi router sudah dideklarasikan
 router.get("/", (req, res) => {
@@ -23,7 +22,7 @@ router.get("/", (req, res) => {
       const dat = login?.jobs || {};
 
       let allData = Object.values(dat).map((item) => item.statusData);
-      if (emitter.listenerCount("stop")) {
+      if (global.shouldStop) {
         allData = []; // Kosongkan data jika proses dihentikan
       }
       console.log("All Data:", allData);
@@ -109,7 +108,7 @@ const activeSlots = new Set();
 
 router.get("/reset", (req, res) => {
   try {
-    setStopped(true); // Set status berhenti menjadi true
+    global.shouldStop = true; // Set global flag untuk menghentikan proses login
     return res.json({
       status: "ok",
       message: "Seluruh task aktif dan file data berhasil direset.",

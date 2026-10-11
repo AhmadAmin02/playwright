@@ -3,7 +3,6 @@ const path = require("path");
 const axios = require("axios");
 const { wrapper } = require("axios-cookiejar-support");
 const { CookieJar } = require("tough-cookie");
-const { emitter, setStopped } = require("./state");
 
 // Fungsi delay / proses async yang lama (contoh pakai Promise)
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,7 +33,7 @@ let countError = 0;
 
 async function main(nomor, startsss, endsss, account) {
   const accounts = account;
-  setStopped(false); // Reset status berhenti sebelum memulai pekerjaan baru
+  global.shouldStop = false; // Reset global flag sebelum memulai proses
 
   jobs[nomor] = {
     statusData: {},
@@ -96,10 +95,10 @@ async function main(nomor, startsss, endsss, account) {
 
     job.timePrev = Date.now() - job.start;
   }
-  if (!emitter.listenerCount("stop")) {
+  if (global.shouldStop) {
     console.log(`Selesai ${job.total} akun`);
   } else {
-    setStopped(false); // Reset status berhenti setelah proses dihentikan
+    global.shouldStop = false; // Reset global flag setelah proses selesai
     console.log(
       `Proses dihentikan oleh pengguna. ${job.count} akun telah diproses.`,
     );
