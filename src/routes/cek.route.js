@@ -498,10 +498,9 @@ router.get("/app", (req, res) => {
             
             // Auto-Update Global Progress Bar
             const gTotal = response.total || 0;
-            console.log("Total Status:", response.data);
             const totalStatus = response.data.reduce((acc, curr) => {
-              acc.berhasil += curr.statusData.berhasil;
-              acc.gagal += curr.statusData.gagal;
+              acc.berhasil += curr.berhasil;
+              acc.gagal += curr.gagal;
               return acc;
             }, { berhasil: 0, gagal: 0 });
             const gBerhasil = totalStatus?.berhasil || 0;
