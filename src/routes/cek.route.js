@@ -20,25 +20,25 @@ router.get("/", (req, res) => {
     try {
       // PENGAMAN 1: Gunakan fallback {} jika login.jobs belum ada / undefined
       const dat = login?.jobs || {};
-      
+
       const allData = Object.values(dat).map((item) => item.statusData);
-      
+
       // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
       const berhasil = allData?.berhasil;
       const gagal = allData?.gagal;
-      
+
       const total = Object.values(dat).reduce(
         (sum, item) => sum + (item.count || 0),
-        0
+        0,
       );
 
       // PENGAMAN 3: Masukkan 'berhasil' dan 'gagal' ke dalam payload agar terkirim ke Frontend
-      const payload = JSON.stringify({ 
-        status: "ok", 
-        total, 
-        berhasil, 
-        gagal, 
-        data: allData 
+      const payload = JSON.stringify({
+        status: "ok",
+        total,
+        berhasil,
+        gagal,
+        data: allData,
       });
 
       // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
@@ -112,13 +112,20 @@ router.get("/sendLogin", (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
 
   const id = generateSequence(prefix);
-  
+
   if (nomor < 1 || nomor > 5) {
-    return res.status(400).json({ status: "error", message: "Parameter nomor tidak valid (Maksimal 5)" });
+    return res
+      .status(400)
+      .json({
+        status: "error",
+        message: "Parameter nomor tidak valid (Maksimal 5)",
+      });
   }
-  
+
   if (limit > id.length) {
-    return res.status(400).json({ status: "error", message: "Limit exceeds available IDs" });
+    return res
+      .status(400)
+      .json({ status: "error", message: "Limit exceeds available IDs" });
   }
 
   // 2. Kumpulkan nomor mana saja yang tersedia untuk dijalankan
@@ -131,9 +138,10 @@ router.get("/sendLogin", (req, res) => {
 
   // 3. Jika semua nomor yang diminta sedang penuh, tolak request
   if (availableToRun.length === 0) {
-    return res.status(429).json({ 
-      status: "warning", 
-      message: "Semua nomor (slot) tersebut sedang digunakan oleh proses lain. Harap tunggu." 
+    return res.status(429).json({
+      status: "warning",
+      message:
+        "Semua nomor (slot) tersebut sedang digunakan oleh proses lain. Harap tunggu.",
     });
   }
 
@@ -141,11 +149,12 @@ router.get("/sendLogin", (req, res) => {
   availableToRun.forEach((i) => {
     // Tandai nomor ini sedang berjalan
     activeSlots.add(i);
-    
+
     console.log(`Memulai proses login untuk nomor: ${i} (Prefix: ${prefix})`);
 
     // 5. Eksekusi login.main sebagai Promise
-    login.main(i, startDate, endDate, dapatkanHalaman(id, i, limit))
+    login
+      .main(i, startDate, endDate, dapatkanHalaman(id, i, limit))
       .then((result) => {
         // Jika login.main sukses
         console.log(`Task nomor ${i} selesai dengan sukses.`);
@@ -162,13 +171,16 @@ router.get("/sendLogin", (req, res) => {
   });
 
   // 7. Berikan response ke client (hanya memberi tahu task yang berhasil dijalankan)
-  res.json({ 
-    status: "ok", 
+  res.json({
+    status: "ok",
     message: `Proses login telah diinisiasi.`,
     data: {
       berhasilDijalankan: availableToRun,
-      dilewatiKarenaPenuh: (nomor - availableToRun.length > 0) ? "Sebagian nomor dilewati karena sedang berjalan." : "Tidak ada"
-    }
+      dilewatiKarenaPenuh:
+        nomor - availableToRun.length > 0
+          ? "Sebagian nomor dilewati karena sedang berjalan."
+          : "Tidak ada",
+    },
   });
 });
 
@@ -486,9 +498,13 @@ router.get("/app", (req, res) => {
             
             // Auto-Update Global Progress Bar
             const gTotal = response.total || 0;
-            console.log(response);
-            const gBerhasil = response.statusData.berhasil || 0;
-            const gGagal = response.statusData.gagal || 0;
+            const totalStatus = response.data.reduce((acc, curr) => {
+              acc.berhasil += curr.statusData.berhasil;
+              acc.gagal += curr.statusData.gagal;
+              return acc;
+            }, { berhasil: 0, gagal: 0 });
+            const gBerhasil = totalStatus.berhasil || 0;
+            const gGagal = totalStatus.gagal || 0;
             const calcGTotal = gTotal > 0 ? gTotal : 1;
 
             valTotal.innerText = gTotal;
