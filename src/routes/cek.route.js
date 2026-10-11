@@ -12,15 +12,18 @@ router.get("/", (req, res) => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
-    "Connection": "keep-alive"
+    Connection: "keep-alive",
   });
 
   // 2. Buat fungsi untuk mengekstrak dan mengirim data terbaru
   const sendData = () => {
     // Ambil data terbaru dari variabel yang berubah-ubah
-    const data = login.jobs; 
-    const allData = Object.values(data).map(item => item.statusData);
-    const total = Object.values(data).reduce((sum, item) => sum + item.count, 0);
+    const data = login.jobs;
+    const allData = Object.values(data).map((item) => item.statusData);
+    const total = Object.values(data).reduce(
+      (sum, item) => sum + item.count,
+      0,
+    );
 
     // Format payload menjadi string JSON
     const payload = JSON.stringify({ status: "ok", total, data: allData });
@@ -45,40 +48,42 @@ router.get("/", (req, res) => {
 
 router.get("/error", (req, res) => {
   const filePath = path.join(__dirname, "../lib", "axios-error.json");
-  
+
   if (!fs.existsSync(filePath)) {
     return res.json({
       status: "ok",
-      data: []
+      data: [],
     });
   }
-  
+
   try {
     const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
     res.json({ status: "ok", data });
   } catch (err) {
     res.json({
       status: "ok",
-      data: []
+      data: [],
     });
   }
 });
 
 router.get("/data", (req, res) => {
   const dir = path.join(__dirname, "../lib");
-  
-  const data = Array.from({ length: 20 }, (_, i) => `data${i + 1}.json`)
-    .flatMap(file => {
-      const filePath = path.join(dir, file);
-      
-      if (!fs.existsSync(filePath)) return [];
-      
-      return JSON.parse(fs.readFileSync(filePath, "utf8"));
-    });
+
+  const data = Array.from(
+    { length: 20 },
+    (_, i) => `data${i + 1}.json`,
+  ).flatMap((file) => {
+    const filePath = path.join(dir, file);
+
+    if (!fs.existsSync(filePath)) return [];
+
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  });
   res.json({ status: "ok", data, total: data.length });
 });
 
-router.get('/app', (req, res) => {
+router.get("/app", (req, res) => {
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="id">
@@ -175,11 +180,6 @@ router.get('/app', (req, res) => {
             padding: 1.5rem; position: relative; transition: transform 0.2s, box-shadow 0.2s;
         }
         .job-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-        .job-card.updated::after {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.06); animation: flash 0.5s ease-out; pointer-events: none;
-        }
-        @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
 
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         .job-meta { color: var(--text-secondary); font-size: 0.75rem; font-family: var(--font-mono); display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -230,7 +230,7 @@ router.get('/app', (req, res) => {
                         <th>Nomor</th>
                         <th>Nama</th>
                         <th>ID</th>
-                        <th>Ya (Tgl)</th>
+                        <th>PIN</th>
                     </tr>
                 </thead>
                 <tbody id="json-table-body">
@@ -256,11 +256,9 @@ router.get('/app', (req, res) => {
             btn.disabled = true;
 
             try {
-                // Request manual hanya saat tombol diklik
                 const response = await fetch('/cek/data');
                 const result = await response.json();
 
-                // Render tabel statis
                 tbody.innerHTML = '';
                 result.data.forEach(item => {
                     tbody.innerHTML += \`
@@ -299,7 +297,6 @@ router.get('/app', (req, res) => {
 
         function buildCardHTML(job) {
             const status = getStatusInfo(job.status);
-            // ======= VARIABEL PEPEK ADA DI SINI ======= //
             return \`
                 <div class="card-header">
                     <div>
@@ -333,6 +330,7 @@ router.get('/app', (req, res) => {
 
             if (!response.data || response.data.length === 0) return;
 
+            // 1. Render atau Update Card yang ada di data
             response.data.forEach(job => {
                 const cardId = 'card-' + job.id;
                 const existingCard = document.getElementById(cardId);
@@ -342,10 +340,7 @@ router.get('/app', (req, res) => {
                     if(existingCard.dataset.raw !== jobString) {
                         existingCard.dataset.raw = jobString;
                         existingCard.innerHTML = buildCardHTML(job);
-                        
-                        existingCard.classList.remove('updated');
-                        void existingCard.offsetWidth; 
-                        existingCard.classList.add('updated');
+                        // Animasi blink sudah dihapus di sini
                     }
                 } else {
                     const card = document.createElement('div');
@@ -356,35 +351,44 @@ router.get('/app', (req, res) => {
                     jobsContainer.appendChild(card);
                 }
             });
+
+            // 2. CLEANUP: Hapus card lama yang sudah tidak ada di response.data
+            // (Ini yang mencegah card menjadi 4 atau terus bertambah menumpuk)
+            const currentIds = response.data.map(j => 'card-' + j.id);
+            document.querySelectorAll('.job-card').forEach(cardElement => {
+                if (!currentIds.includes(cardElement.id)) {
+                    cardElement.remove(); 
+                }
+            });
         };
     </script>
 </body>
 </html>
   `;
-  
+
   res.send(htmlContent);
 });
 
 function generateSequence(prefix) {
   const result = [];
-  
+
   // Looping dari 0 sampai 9999
   for (let i = 0; i <= 9999; i++) {
     // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
-    const suffix = String(i).padStart(4, '0');
+    const suffix = String(i).padStart(4, "0");
     result.push({
       id: `${prefix}${suffix}`,
-      nama: `Nama ${suffix}`
+      nama: `Nama ${suffix}`,
     });
   }
-  
+
   return result;
 }
 
 function dapatkanHalaman(array, page, limit) {
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
-  
+
   return array.slice(startIndex, endIndex);
 }
 
@@ -397,9 +401,9 @@ function dapatkanHalaman(array, page, limit) {
   
   }
   */
-const id = generateSequence("2506");
-login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 1, 200));
-login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 2, 200));
-login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 200));
+const id = generateSequence("2505");
+login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 1, 100));
+login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 2, 100));
+login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 100));
 
 module.exports = router;
