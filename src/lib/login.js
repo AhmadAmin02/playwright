@@ -3,6 +3,10 @@ const path = require('path');
 const axios = require('axios');
 const { wrapper } = require('axios-cookiejar-support');
 const { CookieJar } = require('tough-cookie');
+const { emitter, setStopped } = require('./state');
+
+// Fungsi delay / proses async yang lama (contoh pakai Promise)
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const BASE_URL = 'https://pmb.poliban.ac.id';
 const UA =
@@ -30,7 +34,7 @@ let countError = 0;
 
 async function main(nomor, startsss, endsss, account) {
   const accounts = account;
-  console.log("jobs:", jobs);
+  setStopped(false); // Reset status berhenti sebelum memulai pekerjaan baru
   
   jobs[nomor] = {
     statusData: {},
@@ -63,6 +67,12 @@ async function main(nomor, startsss, endsss, account) {
       endsss,
       nomor // kirim nomor ke login
     );
+
+    if (emitter.listenerCount("stop")) {
+      console.log("Proses dihentikan oleh pengguna.");
+      setStopped(false); // Reset status berhenti setelah proses dihentikan
+      throw new Error("Proses dihentikan oleh pengguna.");
+    }
     
     job.count++;
     job.sisa = job.total - job.count;

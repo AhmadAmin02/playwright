@@ -5,6 +5,7 @@ const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
 const router = express.Router();
+const { setStopped } = require("../lib/state");
 
 // Asumsi router sudah dideklarasikan
 router.get("/", (req, res) => {
@@ -104,62 +105,11 @@ const activeSlots = new Set();
 
 router.get("/reset", (req, res) => {
   try {
-    const paramNomor = req.query.nomor;
-
-    if (paramNomor && paramNomor.toLowerCase() !== "all") {
-      // ============================================
-      // 1. RESET SPESIFIK (Contoh: nomor=1,3,5)
-      // ============================================
-      const listNomor = paramNomor.split(",").map((n) => n.trim());
-
-      listNomor.forEach((nomor) => {
-        // Hapus job dari memory
-        if (login.jobs && login.jobs[nomor]) {
-          delete login.jobs[nomor];
-        }
-        if (activeSlots && activeSlots.has(nomor)) {
-          activeSlots.delete(nomor);
-        }
-
-        // Kosongkan file data spesifik (contoh: data1.json)
-        const filePath = path.join(__dirname, `data${nomor}.json`);
-        if (fs.existsSync(filePath)) {
-          fs.writeFileSync(filePath, JSON.stringify([], null, 2), "utf8");
-        }
-      });
-
-      return res.json({
-        status: "ok",
-        message: `Data nomor ${listNomor.join(", ")} berhasil direset.`,
-      });
-    } else {
-      // ============================================
-      // 2. RESET SEMUA (Default)
-      // ============================================
-
-      // Kosongkan memory global
-      if (login.jobs) login.jobs = {};
-      if (activeSlots) activeSlots.clear();
-
-      // Baca semua file di dalam folder tempat script ini berjalan (__dirname)
-      const files = fs.readdirSync(__dirname);
-
-      files.forEach((file) => {
-        // Gunakan Regex untuk mencocokkan file seperti "data1.json", "data2.json", dll.
-        // \d+ berarti wajib ada angka setelah kata "data"
-        // Jika ada juga file "data.json", gunakan regex: /^data\d*\.json$/
-        if (/^data\d*\.json$/.test(file)) {
-          const filePath = path.join(__dirname, file);
-          // Timpa isi filenya dengan array kosong []
-          fs.writeFileSync(filePath, JSON.stringify([], null, 2), "utf8");
-        }
-      });
-
-      return res.json({
-        status: "ok",
-        message: "Seluruh task aktif dan file data berhasil direset.",
-      });
-    }
+    setStopped(true); // Set status berhenti menjadi true
+    return res.json({
+      status: "ok",
+      message: "Seluruh task aktif dan file data berhasil direset.",
+    });
   } catch (error) {
     console.error("Error saat reset:", error);
     return res.status(500).json({
