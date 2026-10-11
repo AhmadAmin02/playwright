@@ -68,6 +68,8 @@ async function main(nomor, startsss, endsss, account) {
     );
     if (pin === "dihentikan") {
       console.log("Proses dihentikan oleh pengguna.");
+      job = {}; // Hapus referensi job jika proses dihentikan
+      jobs[nomor] = job; // Update jobs dengan job yang kosong
       break; // Keluar dari loop jika proses dihentikan
     }
 
@@ -89,7 +91,11 @@ async function main(nomor, startsss, endsss, account) {
 
     job.timePrev = Date.now() - job.start;
   }
-  console.log(`Selesai ${job.total} akun`);
+  if (!emitter.listenerCount("stop") && !global.shouldStop) {
+    console.log(`Selesai ${job.total} akun`);
+  } else {
+    return "dihentikan";
+  }
 }
 
 function loadAccounts() {
