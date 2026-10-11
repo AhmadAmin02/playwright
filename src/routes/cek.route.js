@@ -503,7 +503,7 @@ router.get("/app", (req, res) => {
               acc.gagal += curr.statusData.gagal;
               return acc;
             }, { berhasil: 0, gagal: 0 });
-            console.log("Total Status:", totalStatus);
+            console.log("Total Status:", response.data);
             const gBerhasil = totalStatus?.berhasil || 0;
             const gGagal = totalStatus?.gagal || 0;
             const calcGTotal = gTotal > 0 ? gTotal : 1;
