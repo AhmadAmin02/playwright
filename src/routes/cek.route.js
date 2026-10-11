@@ -498,12 +498,12 @@ router.get("/app", (req, res) => {
             
             // Auto-Update Global Progress Bar
             const gTotal = response.total || 0;
+            console.log("Total Status:", response.data);
             const totalStatus = response.data.reduce((acc, curr) => {
               acc.berhasil += curr.statusData.berhasil;
               acc.gagal += curr.statusData.gagal;
               return acc;
             }, { berhasil: 0, gagal: 0 });
-            console.log("Total Status:", response.data);
             const gBerhasil = totalStatus?.berhasil || 0;
             const gGagal = totalStatus?.gagal || 0;
             const calcGTotal = gTotal > 0 ? gTotal : 1;
