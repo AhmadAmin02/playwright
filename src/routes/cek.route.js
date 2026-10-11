@@ -4,6 +4,8 @@ const express = require("express");
 const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
+const path = require("node:path");
 const router = express.Router();
 
 // Asumsi router sudah dideklarasikan
@@ -102,7 +104,14 @@ router.get("/data", (req, res) => {
 });
 
 router.get("/reset", (req, res) => {
+  const nomor = parseInt(req.query.nomor) || 1;
   login.jobs = {};
+  activeSlots.clear();
+  fs.writeFileSync(
+      path.join(__dirname, `data${nomor}.json`),
+      JSON.stringify([], null, 2),
+      "utf8"
+    );
   res.json({ status: "ok", message: "Data berhasil direset." });
 });
 // 1. Set global HANYA untuk melacak nomor (1 sampai 5)
@@ -260,6 +269,10 @@ router.get("/app", (req, res) => {
         .form-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
         .form-input::placeholder { color: #64748b; color-scheme: dark; }
         
+        /* Tambahan style untuk Option Select agar rapih di dark mode */
+        select.form-input { cursor: pointer; appearance: auto; }
+        select.form-input option { background: var(--bg-color); color: #fff; }
+        
         /* Tombol Submit & Reset */
         .btn-submit { background: var(--success); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
         .btn-submit:hover { background: #059669; transform: translateY(-2px); }
@@ -268,6 +281,7 @@ router.get("/app", (req, res) => {
         .btn-reset:hover { background: var(--danger); color: #fff; transform: translateY(-2px); border-color: var(--danger); }
         
         .response-text { margin-top: 12px; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); display: block;}
+        .divider { height: 1px; background: rgba(255,255,255,0.08); margin: 1.5rem 0; width: 100%; }
 
         /* JSON Result Panel */
         #json-panel { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: none; }
@@ -335,8 +349,9 @@ router.get("/app", (req, res) => {
             </div>
         </div>
 
-        <!-- Form Panel: Send Login -->
+        <!-- Form Panel: Send Login & Reset Data -->
         <div class="form-panel">
+            <!-- Section Submit -->
             <div class="form-title">Kirim Data Login (/cek/sendLogin)</div>
             <div class="form-group">
                 <input type="text" class="form-input" id="inp-prefix" placeholder="Prefix (cth: ID-X)">
@@ -345,16 +360,28 @@ router.get("/app", (req, res) => {
                 <input type="number" class="form-input" id="inp-page" placeholder="Page" value="1">
                 <input type="number" class="form-input" id="inp-limit" placeholder="Limit" value="100">
                 <button class="btn-submit" id="btn-send-login">Submit (GET)</button>
-                <button class="btn-reset" id="btn-reset-data">Reset</button> <!-- TOMBOL RESET DITAMBAHKAN -->
             </div>
             <div id="login-response" class="response-text"></div>
+            
+            <div class="divider"></div>
+            
+            <!-- Section Reset (MENGGUNAKAN DROPDOWN OTOMATIS) -->
+            <div class="form-title">Reset Data (/cek/reset)</div>
+            <div class="form-group">
+                <select class="form-input" id="select-reset-nomor" style="flex: 1; min-width: 250px; max-width: 400px;">
+                    <option value="">Semua (Reset Default)</option>
+                    <!-- Opsi lainnya akan dimuat otomatis via Javascript dari EventStream -->
+                </select>
+                <button class="btn-reset" id="btn-reset-data">Reset Data</button>
+            </div>
+            <div id="reset-response" class="response-text"></div>
         </div>
 
         <!-- Panel Data JSON -->
         <div id="json-panel">
             <h3 class="json-panel-title">Hasil data.json <span class="close-btn" onclick="document.getElementById('json-panel').style.display='none'">&times;</span></h3>
             <table class="static-data">
-                <thead><tr><th>Nomor</th><th>Nama</th><th>ID</th><th>Ya (Tgl)</th></tr></thead>
+                <thead><tr><th>Nomor</th><th>Nama</th><th>ID</th><th>PIN</th></tr></thead>
                 <tbody id="json-table-body"></tbody>
             </table>
         </div>
@@ -405,15 +432,22 @@ router.get("/app", (req, res) => {
         });
 
         // =====================================
-        // LOGIKA RESET DATA (/cek/reset) 
+        // LOGIKA RESET DATA (/cek/reset)
         // =====================================
         document.getElementById('btn-reset-data').addEventListener('click', async () => {
             const btn = document.getElementById('btn-reset-data');
-            const respEl = document.getElementById('login-response');
-            const jobsContainer = document.getElementById('jobs-container');
+            const respEl = document.getElementById('reset-response');
+            const selectNomor = document.getElementById('select-reset-nomor');
             
-            // Konfirmasi sebelum mereset
-            if (!confirm("Apakah Anda yakin ingin mereset semua data?")) return;
+            // Ambil value dari dropdown select
+            const targetNomor = selectNomor.value;
+            const targetText = selectNomor.options[selectNomor.selectedIndex].text;
+            
+            const confirmMsg = targetNomor 
+                ? \`Apakah Anda yakin ingin mereset data: "\${targetText}"?\`
+                : \`Apakah Anda yakin ingin mereset SEMUA data secara default?\`;
+
+            if (!confirm(confirmMsg)) return;
 
             btn.disabled = true;
             btn.innerText = "Mereset...";
@@ -421,24 +455,31 @@ router.get("/app", (req, res) => {
             respEl.style.color = "var(--warning)";
 
             try {
-                // Fetch ke endpoint reset di server
-                const response = await fetch('/cek/reset');
+                // Set query parameter ke fetch URL
+                let fetchUrl = '/cek/reset';
+                if (targetNomor) {
+                    const params = new URLSearchParams();
+                    params.append('nomor', targetNomor);
+                    fetchUrl += \`?\${params.toString()}\`;
+                }
+
+                const response = await fetch(fetchUrl);
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    respEl.innerText = "Status: OK (Data berhasil di-reset)";
+                    respEl.innerText = "Status: OK (" + (data.message || 'Berhasil di-reset') + ")";
                     respEl.style.color = "var(--success)";
                     
-                    // MENGHAPUS SEMUA KARTU (CARD) DARI LAYAR SECARA INSTAN
-                    jobsContainer.innerHTML = ''; 
-                    
-                    // Meng-nol-kan UI Progress Bar Global
-                    document.getElementById('val-total').innerText = '0';
-                    document.getElementById('val-berhasil').innerText = '0';
-                    document.getElementById('val-gagal').innerText = '0';
-                    document.getElementById('bar-succ').style.width = '0%';
-                    document.getElementById('bar-dang').style.width = '0%';
-                    
+                    // JIKA Reset Semua, hapus seluruh container secara instan
+                    if (!targetNomor) {
+                        document.getElementById('jobs-container').innerHTML = ''; 
+                        document.getElementById('val-total').innerText = '0';
+                        document.getElementById('val-berhasil').innerText = '0';
+                        document.getElementById('val-gagal').innerText = '0';
+                        document.getElementById('bar-succ').style.width = '0%';
+                        document.getElementById('bar-dang').style.width = '0%';
+                    }
+
                 } else {
                     respEl.innerText = "Status: ERROR (" + (data.message || 'Gagal Reset') + ")";
                     respEl.style.color = "var(--danger)";
@@ -448,7 +489,7 @@ router.get("/app", (req, res) => {
                 respEl.style.color = "var(--danger)";
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Reset";
+                btn.innerText = "Reset Data";
             }
         });
 
@@ -485,12 +526,16 @@ router.get("/app", (req, res) => {
         // =====================================
         const jobsContainer = document.getElementById('jobs-container');
         const eventSource = new EventSource('/cek');
+        const selectResetNomor = document.getElementById('select-reset-nomor');
 
         const valTotal = document.getElementById('val-total');
         const valBerhasil = document.getElementById('val-berhasil');
         const valGagal = document.getElementById('val-gagal');
         const barSucc = document.getElementById('bar-succ');
         const barDang = document.getElementById('bar-dang');
+
+        // Variabel untuk melacak status jobs apa saja yang sedang aktif agar Dropdown tidak perlu di-render ulang setiap detik
+        let activeJobsStringTracker = ""; 
 
         function getStatusInfo(statusInt) {
             return (parseInt(statusInt) === 1) 
@@ -553,7 +598,6 @@ router.get("/app", (req, res) => {
             
             const gTotal = response.total || 0;
             
-            // JIKA DATA KOSONG, BERSIHKAN LAYAR
             if (!response.data || response.data.length === 0) {
                 jobsContainer.innerHTML = '';
                 valTotal.innerText = '0';
@@ -561,17 +605,49 @@ router.get("/app", (req, res) => {
                 valGagal.innerText = '0';
                 barSucc.style.width = '0%';
                 barDang.style.width = '0%';
+                
+                // Kosongkan Dropdown
+                if (activeJobsStringTracker !== "[]") {
+                    activeJobsStringTracker = "[]";
+                    selectResetNomor.innerHTML = '<option value="">Semua (Reset Default)</option>';
+                }
                 return;
             }
 
+            // MENGELOLA ISI OPTIONS DROPDOWN RESET (Update hanya jika daftar Job bertambah/berkurang/berubah nama)
+            const currentActiveJobs = response.data.map(j => ({ n: j.nomor, name: j.nama }));
+            const currentJobsString = JSON.stringify(currentActiveJobs);
+            
+            if (currentJobsString !== activeJobsStringTracker) {
+                activeJobsStringTracker = currentJobsString;
+                
+                // Simpan value dropdown yang sedang dipilih agar tidak ter-reset
+                const userSelectedValue = selectResetNomor.value;
+                
+                // Render ulang option
+                selectResetNomor.innerHTML = '<option value="">Semua (Reset Default)</option>';
+                response.data.forEach(job => {
+                    const option = document.createElement('option');
+                    option.value = job.nomor;
+                    option.textContent = \`Nomor \${job.nomor} - \${job.nama}\`;
+                    selectResetNomor.appendChild(option);
+                });
+
+                // Terapkan kembali pilihan user sebelumnya jika masih tersedia
+                if (Array.from(selectResetNomor.options).some(opt => opt.value === userSelectedValue)) {
+                    selectResetNomor.value = userSelectedValue;
+                }
+            }
+            // ========================================================
+
             const totalStatus = response.data.reduce((acc, curr) => {
-              acc.berhasil += (curr.berhasil || 0);
-              acc.gagal += (curr.gagal || 0);
+              acc.berhasil += curr.berhasil;
+              acc.gagal += curr.gagal;
               return acc;
             }, { berhasil: 0, gagal: 0 });
             
-            const gBerhasil = totalStatus.berhasil || 0;
-            const gGagal = totalStatus.gagal || 0;
+            const gBerhasil = totalStatus?.berhasil || 0;
+            const gGagal = totalStatus?.gagal || 0;
             const calcGTotal = gTotal > 0 ? gTotal : 1;
 
             valTotal.innerText = gTotal;
@@ -603,7 +679,6 @@ router.get("/app", (req, res) => {
                 }
             });
 
-            // Cleanup cards yang sudah tidak ada di respons
             const currentIds = response.data.map(j => 'card-' + j.id);
             document.querySelectorAll('.job-card').forEach(el => {
                 if (!currentIds.includes(el.id)) el.remove(); 
