@@ -29,6 +29,8 @@ router.get("/", (req, res) => {
       // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
       const berhasil = dd.filter((d) => d?.pin?.length === 8).length || 0;
       const gagal = dd.filter((d) => d?.pin?.length !== 8).length || 0;
+      console.log(dd);
+      console.log(allData);
       
       const total = Object.values(dat).reduce(
         (sum, item) => sum + (item.count || 0),
@@ -402,7 +404,7 @@ router.get("/app", (req, res) => {
                             <td>#\${item.nomor}</td>
                             <td>\${item.nama}</td>
                             <td>\${item.id}</td>
-                            <td style="color: #93c5fd;">\${item.ya}</td>
+                            <td style="color: #93c5fd;">\${item.pin}</td>
                         </tr>
                     \`;
                 });
