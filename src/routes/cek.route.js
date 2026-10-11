@@ -42,7 +42,7 @@ router.get("/", (req, res) => {
         total,
         berhasil,
         gagal,
-        data: allData,
+        data: allData.filter(item => item != null),
       });
 
       // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
@@ -597,7 +597,7 @@ router.get("/app", (req, res) => {
             barDang.style.width = \`\${Math.min((gGagal / calcGTotal) * 100, 100)}%\`;
 
             response.data.forEach(job => {
-                const cardId = 'card-' + job.id;
+                const cardId = 'card-' + job?.id;
                 let existingCard = document.getElementById(cardId);
                 
                 const jobString = JSON.stringify({job: job, stat: {b: gBerhasil, g: gGagal, t: gTotal}}); 
