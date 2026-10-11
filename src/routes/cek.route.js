@@ -273,10 +273,6 @@ router.get("/app", (req, res) => {
         .form-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
         .form-input::placeholder { color: #64748b; color-scheme: dark; }
         
-        /* Tambahan style untuk Option Select agar rapih di dark mode */
-        select.form-input { cursor: pointer; appearance: auto; }
-        select.form-input option { background: var(--bg-color); color: #fff; }
-        
         /* Tombol Submit & Reset */
         .btn-submit { background: var(--success); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
         .btn-submit:hover { background: #059669; transform: translateY(-2px); }
@@ -369,14 +365,10 @@ router.get("/app", (req, res) => {
             
             <div class="divider"></div>
             
-            <!-- Section Reset (MENGGUNAKAN DROPDOWN OTOMATIS) -->
-            <div class="form-title">Reset Data (/cek/reset)</div>
+            <!-- Section Reset (Semua) -->
+            <div class="form-title">Reset Semua Data (/cek/reset)</div>
             <div class="form-group">
-                <select class="form-input" id="select-reset-nomor" style="flex: 1; min-width: 250px; max-width: 400px;">
-                    <option value="">Semua (Reset Default)</option>
-                    <!-- Opsi lainnya akan dimuat otomatis via Javascript dari EventStream -->
-                </select>
-                <button class="btn-reset" id="btn-reset-data">Reset Data</button>
+                <button class="btn-reset" id="btn-reset-data">Reset Semua Data</button>
             </div>
             <div id="reset-response" class="response-text"></div>
         </div>
@@ -441,17 +433,8 @@ router.get("/app", (req, res) => {
         document.getElementById('btn-reset-data').addEventListener('click', async () => {
             const btn = document.getElementById('btn-reset-data');
             const respEl = document.getElementById('reset-response');
-            const selectNomor = document.getElementById('select-reset-nomor');
             
-            // Ambil value dari dropdown select
-            const targetNomor = selectNomor.value;
-            const targetText = selectNomor.options[selectNomor.selectedIndex].text;
-            
-            const confirmMsg = targetNomor 
-                ? \`Apakah Anda yakin ingin mereset data: "\${targetText}"?\`
-                : \`Apakah Anda yakin ingin mereset SEMUA data secara default?\`;
-
-            if (!confirm(confirmMsg)) return;
+            if (!confirm("Apakah Anda yakin ingin mereset SEMUA data dan menghapus progress saat ini?")) return;
 
             btn.disabled = true;
             btn.innerText = "Mereset...";
@@ -459,30 +442,20 @@ router.get("/app", (req, res) => {
             respEl.style.color = "var(--warning)";
 
             try {
-                // Set query parameter ke fetch URL
-                let fetchUrl = '/cek/reset';
-                if (targetNomor) {
-                    const params = new URLSearchParams();
-                    params.append('nomor', targetNomor);
-                    fetchUrl += \`?\${params.toString()}\`;
-                }
-
-                const response = await fetch(fetchUrl);
+                const response = await fetch('/cek/reset');
                 const data = await response.json();
 
                 if (data.status === 'ok') {
                     respEl.innerText = "Status: OK (" + (data.message || 'Berhasil di-reset') + ")";
                     respEl.style.color = "var(--success)";
                     
-                    // JIKA Reset Semua, hapus seluruh container secara instan
-                    if (!targetNomor) {
-                        document.getElementById('jobs-container').innerHTML = ''; 
-                        document.getElementById('val-total').innerText = '0';
-                        document.getElementById('val-berhasil').innerText = '0';
-                        document.getElementById('val-gagal').innerText = '0';
-                        document.getElementById('bar-succ').style.width = '0%';
-                        document.getElementById('bar-dang').style.width = '0%';
-                    }
+                    // Hapus seluruh container secara instan
+                    document.getElementById('jobs-container').innerHTML = ''; 
+                    document.getElementById('val-total').innerText = '0';
+                    document.getElementById('val-berhasil').innerText = '0';
+                    document.getElementById('val-gagal').innerText = '0';
+                    document.getElementById('bar-succ').style.width = '0%';
+                    document.getElementById('bar-dang').style.width = '0%';
 
                 } else {
                     respEl.innerText = "Status: ERROR (" + (data.message || 'Gagal Reset') + ")";
@@ -493,7 +466,7 @@ router.get("/app", (req, res) => {
                 respEl.style.color = "var(--danger)";
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Reset Data";
+                btn.innerText = "Reset Semua Data";
             }
         });
 
@@ -530,16 +503,12 @@ router.get("/app", (req, res) => {
         // =====================================
         const jobsContainer = document.getElementById('jobs-container');
         const eventSource = new EventSource('/cek');
-        const selectResetNomor = document.getElementById('select-reset-nomor');
 
         const valTotal = document.getElementById('val-total');
         const valBerhasil = document.getElementById('val-berhasil');
         const valGagal = document.getElementById('val-gagal');
         const barSucc = document.getElementById('bar-succ');
         const barDang = document.getElementById('bar-dang');
-
-        // Variabel untuk melacak status jobs apa saja yang sedang aktif agar Dropdown tidak perlu di-render ulang setiap detik
-        let activeJobsStringTracker = ""; 
 
         function getStatusInfo(statusInt) {
             return (parseInt(statusInt) === 1) 
@@ -607,40 +576,8 @@ router.get("/app", (req, res) => {
                 valGagal.innerText = '0';
                 barSucc.style.width = '0%';
                 barDang.style.width = '0%';
-                
-                // Kosongkan Dropdown
-                if (activeJobsStringTracker !== "[]") {
-                    activeJobsStringTracker = "[]";
-                    selectResetNomor.innerHTML = '<option value="">Semua (Reset Default)</option>';
-                }
                 return;
             }
-
-            // MENGELOLA ISI OPTIONS DROPDOWN RESET (Update hanya jika daftar Job bertambah/berkurang/berubah nama)
-            const currentActiveJobs = response.data.map(j => ({ n: j.nomor, name: j.nama }));
-            const currentJobsString = JSON.stringify(currentActiveJobs);
-            
-            if (currentJobsString !== activeJobsStringTracker) {
-                activeJobsStringTracker = currentJobsString;
-                
-                // Simpan value dropdown yang sedang dipilih agar tidak ter-reset
-                const userSelectedValue = selectResetNomor.value;
-                
-                // Render ulang option
-                selectResetNomor.innerHTML = '<option value="">Semua (Reset Default)</option>';
-                response.data.forEach(job => {
-                    const option = document.createElement('option');
-                    option.value = job.nomor;
-                    option.textContent = \`Nomor \${job.nomor} - \${job.nama}\`;
-                    selectResetNomor.appendChild(option);
-                });
-
-                // Terapkan kembali pilihan user sebelumnya jika masih tersedia
-                if (Array.from(selectResetNomor.options).some(opt => opt.value === userSelectedValue)) {
-                    selectResetNomor.value = userSelectedValue;
-                }
-            }
-            // ========================================================
 
             const gTotal = response.data.reduce((acc, curr) => acc + (curr.berhasil + curr.gagal), 0);
             const totalStatus = response.data.reduce((acc, curr) => {
