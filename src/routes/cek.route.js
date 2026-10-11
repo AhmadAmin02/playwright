@@ -598,8 +598,6 @@ router.get("/app", (req, res) => {
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
             
-            const gTotal = response.total || 0;
-            
             if (!response.data || response.data.length === 0) {
                 jobsContainer.innerHTML = '';
                 valTotal.innerText = '0';
@@ -642,6 +640,7 @@ router.get("/app", (req, res) => {
             }
             // ========================================================
 
+            const gTotal = response.data.reduce((acc, curr) => acc + (curr.berhasil + curr.gagal), 0);
             const totalStatus = response.data.reduce((acc, curr) => {
               acc.berhasil += curr.berhasil;
               acc.gagal += curr.gagal;

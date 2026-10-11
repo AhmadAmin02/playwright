@@ -66,6 +66,10 @@ async function main(nomor, startsss, endsss, account) {
       endsss,
       nomor, // kirim nomor ke login
     );
+    if (pin === "dihentikan") {
+      console.log("Proses dihentikan oleh pengguna.");
+      break; // Keluar dari loop jika proses dihentikan
+    }
 
     job.count++;
     job.sisa = job.total - job.count;
@@ -128,7 +132,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         jar.removeAllCookiesSync();
         g.reset();
         job.coba = 0;
-        return "Dihentikan";
+        return "dihentikan";
       }
       job.coba++;
       const { data: html } = await client.get("/login");
