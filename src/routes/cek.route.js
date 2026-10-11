@@ -433,7 +433,7 @@ router.get("/app", (req, res) => {
             const status = getStatusInfo(job.status);
             
             // Mengambil variabel total, berhasil, gagal dari LUAR data (dari root JSON response)
-            const total = response.total || 0; 
+            const total = job.total || 0; 
             const calcTotal = total > 0 ? total : 1; // Cegah pembagian dengan nol
             
             const berhasil = job.berhasil || 0;
