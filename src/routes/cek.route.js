@@ -80,22 +80,80 @@ router.get("/data", (req, res) => {
 
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
   });
-  res.json({ status: "ok", data, total: data.length });
+  const berhasil = data.filter((d) => d.pin.length === 8).length;
+  const gagal = data.filter((d) => d.pin.length !== 8).length;
+  res.json({ status: "ok", data, total: data.length, berhasil, gagal });
 });
+
+// 1. Set global HANYA untuk melacak nomor (1 sampai 5)
+const activeSlots = new Set();
 
 router.get("/sendLogin", (req, res) => {
   const prefix = req.query.prefix || "2505";
   const startDate = req.query.startDate || "01/01/2006";
   const endDate = req.query.endDate || "31/12/2008";
-  const page = parseInt(req.query.page) || 1;
+  const nomor = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 100;
 
   const id = generateSequence(prefix);
-  login.main(1, startDate, endDate, dapatkanHalaman(id, page, limit));
-  login.main(2, startDate, endDate, dapatkanHalaman(id, page + 1, limit));
-  login.main(3, startDate, endDate, dapatkanHalaman(id, page + 2, limit));
+  
+  if (nomor < 1 || nomor > 5) {
+    return res.status(400).json({ status: "error", message: "Parameter nomor tidak valid (Maksimal 5)" });
+  }
+  
+  if (limit > id.length) {
+    return res.status(400).json({ status: "error", message: "Limit exceeds available IDs" });
+  }
 
-  res.json({ status: "ok", data: "Login tasks have been initiated." });
+  // 2. Kumpulkan nomor mana saja yang tersedia untuk dijalankan
+  const availableToRun = [];
+  for (let i = 1; i <= nomor; i++) {
+    if (!activeSlots.has(i)) {
+      availableToRun.push(i); // Tambahkan jika nomor 'i' sedang tidak dipakai
+    }
+  }
+
+  // 3. Jika semua nomor yang diminta sedang penuh, tolak request
+  if (availableToRun.length === 0) {
+    return res.status(429).json({ 
+      status: "warning", 
+      message: "Semua nomor (slot) tersebut sedang digunakan oleh proses lain. Harap tunggu." 
+    });
+  }
+
+  // 4. Jalankan HANYA nomor yang tersedia
+  availableToRun.forEach((i) => {
+    // Tandai nomor ini sedang berjalan
+    activeSlots.add(i);
+    
+    console.log(`Memulai proses login untuk nomor: ${i} (Prefix: ${prefix})`);
+
+    // 5. Eksekusi login.main sebagai Promise
+    login.main(i, startDate, endDate, dapatkanHalaman(id, i, limit))
+      .then((result) => {
+        // Jika login.main sukses
+        console.log(`Task nomor ${i} selesai dengan sukses.`);
+      })
+      .catch((error) => {
+        // Jika login.main error / gagal
+        console.error(`Task nomor ${i} mengalami error:`, error);
+      })
+      .finally(() => {
+        // 6. Lepaskan / hapus nomor dari memori agar bisa dipakai lagi nanti
+        activeSlots.delete(i);
+        console.log(`Slot nomor ${i} telah dikosongkan dan siap digunakan.`);
+      });
+  });
+
+  // 7. Berikan response ke client (hanya memberi tahu task yang berhasil dijalankan)
+  res.json({ 
+    status: "ok", 
+    message: `Proses login telah diinisiasi.`,
+    data: {
+      berhasilDijalankan: availableToRun,
+      dilewatiKarenaPenuh: (nomor - availableToRun.length > 0) ? "Sebagian nomor dilewati karena sedang berjalan." : "Tidak ada"
+    }
+  });
 });
 
 router.get("/app", (req, res) => {
@@ -140,10 +198,10 @@ router.get("/app", (req, res) => {
             background: var(--card-bg); backdrop-filter: blur(16px);
             border: 1px solid var(--border-color); border-radius: 16px;
             padding: 2rem; margin-bottom: 1.5rem;
-            display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;
         }
         .header-info h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
-        .header-info p { margin: 0.5rem 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem; }
+        .header-info p { margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
         
         .live-indicator {
             width: 8px; height: 8px; background-color: var(--success);
@@ -156,31 +214,12 @@ router.get("/app", (req, res) => {
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        .action-area { display: flex; flex-direction: column; align-items: flex-end; gap: 1rem; width: 100%; max-width: 450px;}
-        
-        /* === KOMPONEN PROGRESS BAR === */
-        .progress-section {
-            background: var(--card-inner); padding: 16px; width: 100%;
-            border-radius: 12px; border: 1px solid rgba(0,0,0,0.2); box-sizing: border-box;
-        }
-        .progress-labels {
-            display: flex; justify-content: space-between; margin-bottom: 10px;
-            font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .pl-succ { color: var(--success); }
-        .pl-tot { color: var(--text-primary); text-align: center; flex: 1; }
-        .pl-dang { color: var(--danger); text-align: right; }
-        .progress-labels span b { font-size: 1.1rem; font-family: var(--font-mono); display: block; margin-top: 2px; }
-        
-        .progress-bar-container {
-            width: 100%; height: 12px; background: rgba(255,255,255,0.05);
-            border-radius: 6px; overflow: hidden; display: flex;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
-        }
-        .bar-succ { height: 100%; background: var(--success); transition: width 0.4s ease; }
-        .bar-dang { height: 100%; background: var(--danger); transition: width 0.4s ease; }
+        .action-area { display: flex; align-items: center; gap: 1.5rem; }
+        .stat-box { text-align: right; }
+        .stat-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;}
+        .stat-value { font-size: 2.2rem; font-weight: 700; color: var(--accent-color); line-height: 1; margin-top: 4px; font-family: var(--font-mono); }
 
-        .btn-fetch { background: var(--accent-color); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+        .btn-fetch { background: var(--accent-color); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; font-family: inherit; height: 42px;}
         .btn-fetch:hover { background: #2563eb; transform: translateY(-2px); }
 
         /* Form Panel (Send Login) */
@@ -192,7 +231,7 @@ router.get("/app", (req, res) => {
             padding: 10px 14px; border-radius: 8px; font-family: inherit; outline: none; flex: 1; min-width: 130px; font-size: 0.9rem;
         }
         .form-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
-        .form-input::placeholder { color: #64748b; color-scheme: dark; } /* Memastikan icon kalender jadi terang */
+        .form-input::placeholder { color: #64748b; color-scheme: dark; }
         
         .btn-submit { background: var(--success); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
         .btn-submit:hover { background: #059669; transform: translateY(-2px); }
@@ -207,7 +246,7 @@ router.get("/app", (req, res) => {
         table.static-data th { color: #94a3b8; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.8rem; text-transform: uppercase; }
 
         /* Jobs Grid */
-        .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; }
+        .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem; }
         .job-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem; position: relative; transition: transform 0.2s, box-shadow 0.2s; }
         .job-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
         
@@ -220,14 +259,27 @@ router.get("/app", (req, res) => {
         .status-running { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
         .status-idle { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
         
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 16px 0; }
+        /* === PROGRESS BAR PER CARD === */
+        .card-progress { background: var(--card-inner); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2); margin-top: 14px; }
+        .progress-labels { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+        .pl-succ { color: var(--success); }
+        .pl-tot { color: var(--text-secondary); text-align: center; flex: 1; }
+        .pl-dang { color: var(--danger); text-align: right; }
+        .progress-labels b { font-size: 0.95rem; font-family: var(--font-mono); display: block; margin-top: 2px; }
+        
+        .progress-bar-container { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; }
+        .bar-succ { height: 100%; background: var(--success); transition: width 0.4s ease; }
+        .bar-dang { height: 100%; background: var(--danger); transition: width 0.4s ease; }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
         .stat-item { background: var(--card-inner); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 4px; }
         .stat-item .lbl { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 500; }
-        .stat-item .val { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; font-family: var(--font-mono); }
-        .card-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px; }
+        .stat-item .val { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; font-family: var(--font-mono); }
+        
+        .card-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .footer-text { font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono); }
 
-        @media(max-width: 768px){ .header-card { flex-direction: column; } .action-area { max-width: 100%; align-items: flex-start; } }
+        @media(max-width: 768px){ .header-card { flex-direction: column; align-items: flex-start; } .action-area { flex-direction: column; align-items: flex-start; gap: 1rem; } .stat-box { text-align: left; } }
     </style>
 </head>
 <body>
@@ -238,23 +290,14 @@ router.get("/app", (req, res) => {
             <div class="header-info">
                 <h1>Sistem Monitor</h1>
                 <p><span class="live-indicator"></span> Koneksi stream aktif</p>
-                <button class="btn-fetch" id="btn-load-json">Ambil Data Statis (JSON)</button>
             </div>
             
             <div class="action-area">
-                <!-- Progress Bar Berhasil / Gagal -->
-                <div class="progress-section">
-                    <div class="progress-labels">
-                        <span class="pl-succ">Berhasil <b id="val-berhasil">0</b></span>
-                        <span class="pl-tot">Total <b id="val-total">0</b></span>
-                        <span class="pl-dang">Gagal <b id="val-gagal">0</b></span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="bar-succ" id="bar-succ" style="width: 0%"></div>
-                        <div class="bar-dang" id="bar-dang" style="width: 0%"></div>
-                        <!-- Sisa bar kosong otomatis jadi warna background -->
-                    </div>
+                <div class="stat-box">
+                    <div class="stat-label">Total Data Keseluruhan</div>
+                    <div class="stat-value" id="global-total">0</div>
                 </div>
+                <button class="btn-fetch" id="btn-load-json">Load Data.json</button>
             </div>
         </div>
 
@@ -287,13 +330,26 @@ router.get("/app", (req, res) => {
 
     <script>
         // =====================================
+        // AUTO-FETCH GLOBAL TOTAL ON LOAD
+        // =====================================
+        async function fetchGlobalTotal() {
+            try {
+                const res = await fetch('/cek/data');
+                const result = await res.json();
+                document.getElementById('global-total').innerText = result.total || 0;
+            } catch (err) {
+                console.error("Gagal load total dari data.json", err);
+            }
+        }
+        fetchGlobalTotal(); // Jalankan saat web dibuka
+
+        // =====================================
         // LOGIKA SUBMIT DATA (/cek/sendLogin) - VIA GET
         // =====================================
         document.getElementById('btn-send-login').addEventListener('click', async () => {
             const btn = document.getElementById('btn-send-login');
             const respEl = document.getElementById('login-response');
             
-            // Format input sebagai Query String (karena kita pakai GET sekarang)
             const params = new URLSearchParams({
                 prefix: document.getElementById('inp-prefix').value,
                 startDate: document.getElementById('inp-start').value,
@@ -308,11 +364,9 @@ router.get("/app", (req, res) => {
             respEl.style.color = "var(--text-secondary)";
 
             try {
-                // Melakukan Fetch GET dengan query parameter di URL
                 const response = await fetch(\`/cek/sendLogin?\${params.toString()}\`);
                 const data = await response.json();
 
-                // Memeriksa status: "ok" atau "error"
                 if (data.status === 'ok') {
                     respEl.innerText = "Status: OK (Data berhasil dikirim via GET)";
                     respEl.style.color = "var(--success)";
@@ -330,7 +384,7 @@ router.get("/app", (req, res) => {
         });
 
         // =====================================
-        // LOGIKA FETCH DATA.JSON
+        // LOGIKA FETCH DATA.JSON TAMPIL TABEL
         // =====================================
         document.getElementById('btn-load-json').addEventListener('click', async () => {
             const panel = document.getElementById('json-panel');
@@ -339,6 +393,9 @@ router.get("/app", (req, res) => {
             try {
                 const response = await fetch('/cek/data');
                 const result = await response.json();
+                
+                // Update total jika ada perubahan
+                document.getElementById('global-total').innerText = result.total || 0; 
 
                 tbody.innerHTML = '';
                 result.data.forEach(item => {
@@ -360,24 +417,27 @@ router.get("/app", (req, res) => {
         // =====================================
         // LOGIKA STREAM DATA (LIVE)
         // =====================================
-        const valTotal = document.getElementById('val-total');
-        const valBerhasil = document.getElementById('val-berhasil');
-        const valGagal = document.getElementById('val-gagal');
-        
-        const barSucc = document.getElementById('bar-succ');
-        const barDang = document.getElementById('bar-dang');
-        
         const jobsContainer = document.getElementById('jobs-container');
         const eventSource = new EventSource('/cek');
 
         function getStatusInfo(statusInt) {
-            return (parseInt(statusInt) === 1) 
+            return (parseInt(statusInt) === 0) 
                 ? { text: 'RUNNING', class: 'status-running' }
                 : { text: 'STANDBY', class: 'status-idle' };
         }
 
+        // FUNGSI RENDER CARD (Sekarang ada Progress Bar di Dalamnya)
         function buildCardHTML(job) {
             const status = getStatusInfo(job.status);
+            
+            // Perhitungan Progress Bar PER CARD
+            const total = job.total || 1; 
+            const berhasil = job.berhasil || 0;
+            const gagal = job.gagal || 0;
+
+            const percBerhasil = Math.min((berhasil / total) * 100, 100);
+            const percGagal = Math.min((gagal / total) * 100, 100);
+
             return \`
                 <div class="card-header">
                     <div>
@@ -391,6 +451,19 @@ router.get("/app", (req, res) => {
                     <span class="job-status \${status.class}">\${status.text}</span>
                 </div>
                 
+                <!-- PROGRESS BAR PER CARD -->
+                <div class="card-progress">
+                    <div class="progress-labels">
+                        <span class="pl-succ">Berhasil <b>\${berhasil}</b></span>
+                        <span class="pl-tot">Total <b>\${total}</b></span>
+                        <span class="pl-dang">Gagal <b>\${gagal}</b></span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="bar-succ" style="width: \${percBerhasil}%"></div>
+                        <div class="bar-dang" style="width: \${percGagal}%"></div>
+                    </div>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-item"><span class="lbl">Progress</span><span class="val">\${job.count}</span></div>
                     <div class="stat-item"><span class="lbl">Sisa</span><span class="val">\${job.sisa}</span></div>
@@ -407,25 +480,6 @@ router.get("/app", (req, res) => {
 
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
-            
-            // 1. Logika Kalkulasi Progress Bar
-            const total = response.total || 1; // Cegah error pembagian 0
-            const berhasil = response.berhasil || 0;
-            const gagal = response.gagal || 0;
-
-            // Hitung persentase lebar bar (maksimal 100%)
-            const percBerhasil = Math.min((berhasil / total) * 100, 100);
-            const percGagal = Math.min((gagal / total) * 100, 100);
-
-            // Terapkan text dan lebar bar di UI
-            valTotal.innerText = total;
-            valBerhasil.innerText = berhasil;
-            valGagal.innerText = gagal;
-            
-            barSucc.style.width = \`\${percBerhasil}%\`;
-            barDang.style.width = \`\${percGagal}%\`;
-
-            // 2. Render Card Grid
             if (!response.data || response.data.length === 0) return;
 
             response.data.forEach(job => {
@@ -448,7 +502,7 @@ router.get("/app", (req, res) => {
                 }
             });
 
-            // Cleanup card yang tidak ada di stream server
+            // Cleanup
             const currentIds = response.data.map(j => 'card-' + j.id);
             document.querySelectorAll('.job-card').forEach(el => {
                 if (!currentIds.includes(el.id)) el.remove(); 

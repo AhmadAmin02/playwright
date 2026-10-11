@@ -80,7 +80,6 @@ async function main(nomor, startsss, endsss, account) {
     
     job.timePrev = Date.now() - job.start;
   }
-  
   console.log(`Selesai ${job.total} akun`);
 }
 
@@ -143,10 +142,10 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         sisa: job.sisa,
         err: countError,
         coba: job.coba,
-        waktuPrev: `Waktu: ${fmt(job.timePrev)} | Prev: ${job.prev}`,
+        waktuPrev: `Waktu: ${fmt(job.timePrev)} | Prev ID: ${job.prev}`,
         waktuNext: `Waktu: ${fmt(Date.now() - job.start)} | Next ID: ${job.next}`,
         running: fmt(Date.now() - job.starts),
-        status: 0
+        status: 200
       };
       const body = new URLSearchParams({
         idpendaftar,
