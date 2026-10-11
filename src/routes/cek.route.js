@@ -20,8 +20,8 @@ router.get("/", (req, res) => {
     // Ambil data terbaru dari variabel yang berubah-ubah
     const data = login.jobs;
     const allData = Object.values(data).map((item) => item.statusData);
-    const berhasil = allData.filter((d) => d.pin.length === 8)?.length || 0;
-    const gagal = allData.filter((d) => d.pin.length !== 8)?.length || 0;
+    const berhasil = data.filter((d) => d.data.pin.length === 8)?.length || 0;
+    const gagal = data.filter((d) => d.data.pin.length !== 8)?.length || 0;
     const total = Object.values(data).reduce(
       (sum, item) => sum + item.count,
       0,
@@ -82,8 +82,8 @@ router.get("/data", (req, res) => {
 
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
   });
-  const berhasil = data.filter((d) => d.pin.length === 8).length;
-  const gagal = data.filter((d) => d.pin.length !== 8).length;
+  const berhasil = data.filter((d) => d.data.pin.length === 8)?.length || 0;
+  const gagal = data.filter((d) => d.data.pin.length !== 8)?.length || 0;
   res.json({ status: "ok", data, total: data.length, berhasil, gagal });
 });
 
