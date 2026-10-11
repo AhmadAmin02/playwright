@@ -24,13 +24,12 @@ router.get("/", (req, res) => {
       const allData = Object.values(dat).map((item) => item.statusData);
       
       // Ambil array dari item.data
-      const dd = Object.values(dat).map((item) => item.data);
+      const dd = dat?.data || [];
       
       // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
       const berhasil = dd.filter((d) => d?.pin?.length === 8).length || 0;
       const gagal = dd.filter((d) => d?.pin?.length !== 8).length || 0;
       console.log(dd);
-      console.log(allData);
       
       const total = Object.values(dat).reduce(
         (sum, item) => sum + (item.count || 0),
@@ -178,7 +177,7 @@ router.get("/sendLogin", (req, res) => {
 });
 
 router.get("/app", (req, res) => {
- const htmlContent = `
+  const htmlContent = `
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -371,10 +370,10 @@ router.get("/app", (req, res) => {
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    respEl.innerText = "Status: OK (" + data.message + ")";
+                    respEl.innerText = "Status: OK (" + (data.message || 'Sukses') + ")";
                     respEl.style.color = "var(--success)";
                 } else {
-                    respEl.innerText = "Status: ERROR (" + data.message + ")";
+                    respEl.innerText = "Status: ERROR (" + (data.message || 'Gagal') + ")";
                     respEl.style.color = "var(--danger)";
                 }
             } catch (error) {
@@ -433,16 +432,16 @@ router.get("/app", (req, res) => {
                 : { text: 'STANDBY', class: 'status-idle' };
         }
 
-        function buildCardHTML(job) {
+        // FUNGSI RENDER CARD - Sekarang menerima seluruh objek "response"
+        function buildCardHTML(job, response) {
             const status = getStatusInfo(job.status);
             
-            // SOLUSI #1: Perbaiki nama variabel menjadi 'total'
-            console.log('Job Data:', job);
-            const total = job.total || 0; 
-            const calcTotal = total > 0 ? total : 1; // Cegah error dibagi 0 pada styling %
+            // Mengambil variabel total, berhasil, gagal dari LUAR data (dari root JSON response)
+            const total = response.total || 0; 
+            const calcTotal = total > 0 ? total : 1; // Cegah pembagian dengan nol
             
-            const berhasil = job.berhasil || 0;
-            const gagal = job.gagal || 0;
+            const berhasil = response.berhasil || 0;
+            const gagal = response.gagal || 0;
 
             const percBerhasil = Math.min((berhasil / calcTotal) * 100, 100);
             const percGagal = Math.min((gagal / calcTotal) * 100, 100);
@@ -489,7 +488,7 @@ router.get("/app", (req, res) => {
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
             
-            // SOLUSI #3: Auto-Update Global Progress Bar
+            // Auto-Update Global Progress Bar
             const gTotal = response.total || 0;
             const gBerhasil = response.berhasil || 0;
             const gGagal = response.gagal || 0;
@@ -506,13 +505,15 @@ router.get("/app", (req, res) => {
             response.data.forEach(job => {
                 const cardId = 'card-' + job.id;
                 let existingCard = document.getElementById(cardId);
-                const jobString = JSON.stringify(job);
+                
+                // Masukkan "response" root agar bisa diambil stat-nya untuk perbandingan raw
+                const jobString = JSON.stringify({job: job, stat: {b: gBerhasil, g: gGagal, t: gTotal}}); 
                 
                 if (existingCard) {
                     if(existingCard.dataset.raw !== jobString) {
                         existingCard.dataset.raw = jobString;
-                        existingCard.innerHTML = buildCardHTML(job);
-                        // SOLUSI #2: Pastikan CSS 'order' di-apply terus menerus
+                        // Kirim response utuh ke dalam fungsi buildCardHTML
+                        existingCard.innerHTML = buildCardHTML(job, response);
                         existingCard.style.order = job.nomor || 0; 
                     }
                 } else {
@@ -520,9 +521,9 @@ router.get("/app", (req, res) => {
                     card.className = 'job-card';
                     card.id = cardId;
                     card.dataset.raw = jobString;
-                    // SOLUSI #2: Mengunci posisi render CSS Grid via nomor
                     card.style.order = job.nomor || 0; 
-                    card.innerHTML = buildCardHTML(job);
+                    // Kirim response utuh ke dalam fungsi buildCardHTML
+                    card.innerHTML = buildCardHTML(job, response);
                     jobsContainer.appendChild(card);
                 }
             });
