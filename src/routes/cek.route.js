@@ -83,6 +83,21 @@ router.get("/data", (req, res) => {
   res.json({ status: "ok", data, total: data.length });
 });
 
+router.get("/sendLogin", (req, res) => {
+  const prefix = req.query.prefix || "2505";
+  const startDate = req.query.startDate || "01/01/2006";
+  const endDate = req.query.endDate || "31/12/2008";
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 100;
+
+  const id = generateSequence(prefix);
+  login.main(1, startDate, endDate, dapatkanHalaman(id, page, limit));
+  login.main(2, startDate, endDate, dapatkanHalaman(id, page + 1, limit));
+  login.main(3, startDate, endDate, dapatkanHalaman(id, page + 2, limit));
+
+  res.json({ status: "ok", data: "Login tasks have been initiated." });
+});
+
 router.get("/app", (req, res) => {
   const htmlContent = `
 <!DOCTYPE html>
@@ -103,7 +118,6 @@ router.get("/app", (req, res) => {
             --text-secondary: #94a3b8;
             --accent-color: #3b82f6;
             --success: #10b981;
-            --warning: #f59e0b;
             --danger: #ef4444;
             --font-mono: 'JetBrains Mono', monospace;
         }
@@ -126,10 +140,10 @@ router.get("/app", (req, res) => {
             background: var(--card-bg); backdrop-filter: blur(16px);
             border: 1px solid var(--border-color); border-radius: 16px;
             padding: 2rem; margin-bottom: 1.5rem;
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;
         }
         .header-info h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
-        .header-info p { margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+        .header-info p { margin: 0.5rem 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem; }
         
         .live-indicator {
             width: 8px; height: 8px; background-color: var(--success);
@@ -142,50 +156,66 @@ router.get("/app", (req, res) => {
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        .action-area { display: flex; flex-direction: column; align-items: flex-end; gap: 1rem; }
-        .stat-label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; }
-        .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent-color); line-height: 1; text-align: right;}
-
-        /* Styled Button */
-        .btn-fetch {
-            background: var(--accent-color); color: #fff; border: none;
-            padding: 10px 20px; border-radius: 8px; font-weight: 600;
-            font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); font-family: inherit;
+        .action-area { display: flex; flex-direction: column; align-items: flex-end; gap: 1rem; width: 100%; max-width: 450px;}
+        
+        /* === KOMPONEN PROGRESS BAR === */
+        .progress-section {
+            background: var(--card-inner); padding: 16px; width: 100%;
+            border-radius: 12px; border: 1px solid rgba(0,0,0,0.2); box-sizing: border-box;
         }
-        .btn-fetch:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
-        .btn-fetch:active { transform: translateY(0); }
+        .progress-labels {
+            display: flex; justify-content: space-between; margin-bottom: 10px;
+            font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .pl-succ { color: var(--success); }
+        .pl-tot { color: var(--text-primary); text-align: center; flex: 1; }
+        .pl-dang { color: var(--danger); text-align: right; }
+        .progress-labels span b { font-size: 1.1rem; font-family: var(--font-mono); display: block; margin-top: 2px; }
+        
+        .progress-bar-container {
+            width: 100%; height: 12px; background: rgba(255,255,255,0.05);
+            border-radius: 6px; overflow: hidden; display: flex;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .bar-succ { height: 100%; background: var(--success); transition: width 0.4s ease; }
+        .bar-dang { height: 100%; background: var(--danger); transition: width 0.4s ease; }
+
+        .btn-fetch { background: var(--accent-color); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+        .btn-fetch:hover { background: #2563eb; transform: translateY(-2px); }
+
+        /* Form Panel (Send Login) */
+        .form-panel { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 2rem; }
+        .form-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #fff; }
+        .form-group { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .form-input {
+            background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); color: #fff;
+            padding: 10px 14px; border-radius: 8px; font-family: inherit; outline: none; flex: 1; min-width: 130px; font-size: 0.9rem;
+        }
+        .form-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        .form-input::placeholder { color: #64748b; color-scheme: dark; } /* Memastikan icon kalender jadi terang */
+        
+        .btn-submit { background: var(--success); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
+        .btn-submit:hover { background: #059669; transform: translateY(-2px); }
+        .response-text { margin-top: 12px; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); }
 
         /* JSON Result Panel */
-        #json-panel {
-            background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);
-            border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
-            display: none; backdrop-filter: blur(12px); animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        
+        #json-panel { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: none; }
         .json-panel-title { margin: 0 0 1rem 0; font-size: 1rem; color: #93c5fd; font-weight: 600; display: flex; justify-content: space-between;}
         .close-btn { cursor: pointer; color: #94a3b8; font-size: 1.2rem; line-height: 1; }
-        
         table.static-data { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.9rem; }
         table.static-data th, table.static-data td { padding: 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
         table.static-data th { color: #94a3b8; font-weight: 500; font-family: 'Inter', sans-serif; font-size: 0.8rem; text-transform: uppercase; }
 
         /* Jobs Grid */
         .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; }
-        
-        .job-card {
-            background: var(--card-bg); backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color); border-radius: 14px;
-            padding: 1.5rem; position: relative; transition: transform 0.2s, box-shadow 0.2s;
-        }
+        .job-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem; position: relative; transition: transform 0.2s, box-shadow 0.2s; }
         .job-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
-
+        
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         .job-meta { color: var(--text-secondary); font-size: 0.75rem; font-family: var(--font-mono); display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
         .badge-pepek { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: #e2e8f0; }
-        
         .job-name { margin: 0; font-size: 1.2rem; font-weight: 600; color: #fff; }
+        
         .job-status { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; }
         .status-running { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
         .status-idle { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
@@ -194,67 +224,118 @@ router.get("/app", (req, res) => {
         .stat-item { background: var(--card-inner); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 4px; }
         .stat-item .lbl { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 500; }
         .stat-item .val { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; font-family: var(--font-mono); }
-
         .card-footer { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .footer-text { font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono); }
+
+        @media(max-width: 768px){ .header-card { flex-direction: column; } .action-area { max-width: 100%; align-items: flex-start; } }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- Header -->
+        <!-- Header & Global Stats -->
         <div class="header-card">
             <div class="header-info">
                 <h1>Sistem Monitor</h1>
                 <p><span class="live-indicator"></span> Koneksi stream aktif</p>
+                <button class="btn-fetch" id="btn-load-json">Ambil Data Statis (JSON)</button>
             </div>
+            
             <div class="action-area">
-                <div>
-                    <div class="stat-label">Total Data</div>
-                    <div class="stat-value" id="total-count">0</div>
+                <!-- Progress Bar Berhasil / Gagal -->
+                <div class="progress-section">
+                    <div class="progress-labels">
+                        <span class="pl-succ">Berhasil <b id="val-berhasil">0</b></span>
+                        <span class="pl-tot">Total <b id="val-total">0</b></span>
+                        <span class="pl-dang">Gagal <b id="val-gagal">0</b></span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="bar-succ" id="bar-succ" style="width: 0%"></div>
+                        <div class="bar-dang" id="bar-dang" style="width: 0%"></div>
+                        <!-- Sisa bar kosong otomatis jadi warna background -->
+                    </div>
                 </div>
-                <!-- Tombol Manual Fetch -->
-                <button class="btn-fetch" id="btn-load-json">Ambil Data Statis</button>
             </div>
         </div>
 
-        <!-- Panel untuk Data.json -->
+        <!-- Form Panel: Send Login (Metode GET) -->
+        <div class="form-panel">
+            <div class="form-title">Kirim Data Login (/cek/sendLogin)</div>
+            <div class="form-group">
+                <input type="text" class="form-input" id="inp-prefix" placeholder="Prefix (cth: ID-X)">
+                <input type="date" class="form-input" id="inp-start" title="Start Date">
+                <input type="date" class="form-input" id="inp-end" title="End Date">
+                <input type="number" class="form-input" id="inp-page" placeholder="Page" value="1">
+                <input type="number" class="form-input" id="inp-limit" placeholder="Limit" value="100">
+                <button class="btn-submit" id="btn-send-login">Submit (GET)</button>
+            </div>
+            <div id="login-response" class="response-text"></div>
+        </div>
+
+        <!-- Panel Data JSON -->
         <div id="json-panel">
-            <h3 class="json-panel-title">
-                Hasil data.json 
-                <span class="close-btn" onclick="document.getElementById('json-panel').style.display='none'">&times;</span>
-            </h3>
+            <h3 class="json-panel-title">Hasil data.json <span class="close-btn" onclick="document.getElementById('json-panel').style.display='none'">&times;</span></h3>
             <table class="static-data">
-                <thead>
-                    <tr>
-                        <th>Nomor</th>
-                        <th>Nama</th>
-                        <th>ID</th>
-                        <th>PIN</th>
-                    </tr>
-                </thead>
-                <tbody id="json-table-body">
-                    <!-- Diisi lewat JS -->
-                </tbody>
+                <thead><tr><th>Nomor</th><th>Nama</th><th>ID</th><th>Ya (Tgl)</th></tr></thead>
+                <tbody id="json-table-body"></tbody>
             </table>
         </div>
 
-        <!-- Grid untuk Live Stream -->
+        <!-- Live Streaming Cards -->
         <div class="jobs-grid" id="jobs-container"></div>
     </div>
 
     <script>
         // =====================================
-        // LOGIKA FETCH DATA.JSON (KLIK MANUAL)
+        // LOGIKA SUBMIT DATA (/cek/sendLogin) - VIA GET
+        // =====================================
+        document.getElementById('btn-send-login').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-send-login');
+            const respEl = document.getElementById('login-response');
+            
+            // Format input sebagai Query String (karena kita pakai GET sekarang)
+            const params = new URLSearchParams({
+                prefix: document.getElementById('inp-prefix').value,
+                startDate: document.getElementById('inp-start').value,
+                endDate: document.getElementById('inp-end').value,
+                page: document.getElementById('inp-page').value,
+                limit: document.getElementById('inp-limit').value
+            });
+
+            btn.disabled = true;
+            btn.innerText = "Mengirim...";
+            respEl.innerText = "Memproses Request...";
+            respEl.style.color = "var(--text-secondary)";
+
+            try {
+                // Melakukan Fetch GET dengan query parameter di URL
+                const response = await fetch(\`/cek/sendLogin?\${params.toString()}\`);
+                const data = await response.json();
+
+                // Memeriksa status: "ok" atau "error"
+                if (data.status === 'ok') {
+                    respEl.innerText = "Status: OK (Data berhasil dikirim via GET)";
+                    respEl.style.color = "var(--success)";
+                } else {
+                    respEl.innerText = "Status: ERROR";
+                    respEl.style.color = "var(--danger)";
+                }
+            } catch (error) {
+                respEl.innerText = "Status: ERROR (Gagal koneksi ke server)";
+                respEl.style.color = "var(--danger)";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Submit (GET)";
+            }
+        });
+
+        // =====================================
+        // LOGIKA FETCH DATA.JSON
         // =====================================
         document.getElementById('btn-load-json').addEventListener('click', async () => {
-            const btn = document.getElementById('btn-load-json');
             const panel = document.getElementById('json-panel');
             const tbody = document.getElementById('json-table-body');
             
-            btn.innerText = "Memuat...";
-            btn.disabled = true;
-
             try {
                 const response = await fetch('/cek/data');
                 const result = await response.json();
@@ -270,22 +351,22 @@ router.get("/app", (req, res) => {
                         </tr>
                     \`;
                 });
-
                 panel.style.display = 'block';
-                btn.innerText = "Ambil Data Statis";
             } catch (error) {
-                console.error("Gagal mengambil data:", error);
-                btn.innerText = "Gagal Fetch!";
-                setTimeout(() => btn.innerText = "Ambil Data Statis", 2000);
-            } finally {
-                btn.disabled = false;
+                alert("Gagal Fetch data.json");
             }
         });
 
         // =====================================
         // LOGIKA STREAM DATA (LIVE)
         // =====================================
-        const totalCountEl = document.getElementById('total-count');
+        const valTotal = document.getElementById('val-total');
+        const valBerhasil = document.getElementById('val-berhasil');
+        const valGagal = document.getElementById('val-gagal');
+        
+        const barSucc = document.getElementById('bar-succ');
+        const barDang = document.getElementById('bar-dang');
+        
         const jobsContainer = document.getElementById('jobs-container');
         const eventSource = new EventSource('/cek');
 
@@ -303,7 +384,7 @@ router.get("/app", (req, res) => {
                         <div class="job-meta">
                             <span>#\${job.nomor}</span> • 
                             <span>ID: \${job.id}</span> • 
-                            <span class="badge-pepek">Try Pin: \${job.tryPin}</span>
+                            <span class="badge-pepek">Try PIN: \${job.tryPin}</span>
                         </div>
                         <h3 class="job-name">\${job.nama}</h3>
                     </div>
@@ -326,11 +407,27 @@ router.get("/app", (req, res) => {
 
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
-            totalCountEl.innerText = response.total;
+            
+            // 1. Logika Kalkulasi Progress Bar
+            const total = response.total || 1; // Cegah error pembagian 0
+            const berhasil = response.berhasil || 0;
+            const gagal = response.gagal || 0;
 
+            // Hitung persentase lebar bar (maksimal 100%)
+            const percBerhasil = Math.min((berhasil / total) * 100, 100);
+            const percGagal = Math.min((gagal / total) * 100, 100);
+
+            // Terapkan text dan lebar bar di UI
+            valTotal.innerText = total;
+            valBerhasil.innerText = berhasil;
+            valGagal.innerText = gagal;
+            
+            barSucc.style.width = \`\${percBerhasil}%\`;
+            barDang.style.width = \`\${percGagal}%\`;
+
+            // 2. Render Card Grid
             if (!response.data || response.data.length === 0) return;
 
-            // 1. Render atau Update Card yang ada di data
             response.data.forEach(job => {
                 const cardId = 'card-' + job.id;
                 const existingCard = document.getElementById(cardId);
@@ -340,7 +437,6 @@ router.get("/app", (req, res) => {
                     if(existingCard.dataset.raw !== jobString) {
                         existingCard.dataset.raw = jobString;
                         existingCard.innerHTML = buildCardHTML(job);
-                        // Animasi blink sudah dihapus di sini
                     }
                 } else {
                     const card = document.createElement('div');
@@ -352,13 +448,10 @@ router.get("/app", (req, res) => {
                 }
             });
 
-            // 2. CLEANUP: Hapus card lama yang sudah tidak ada di response.data
-            // (Ini yang mencegah card menjadi 4 atau terus bertambah menumpuk)
+            // Cleanup card yang tidak ada di stream server
             const currentIds = response.data.map(j => 'card-' + j.id);
-            document.querySelectorAll('.job-card').forEach(cardElement => {
-                if (!currentIds.includes(cardElement.id)) {
-                    cardElement.remove(); 
-                }
+            document.querySelectorAll('.job-card').forEach(el => {
+                if (!currentIds.includes(el.id)) el.remove(); 
             });
         };
     </script>
@@ -401,9 +494,9 @@ function dapatkanHalaman(array, page, limit) {
   
   }
   */
-const id = generateSequence("2505");
+/*const id = generateSequence("2505");
 login.main(1, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 1, 100));
 login.main(2, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 2, 100));
-login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 100));
+login.main(3, "01/01/2006", "31/12/2008", dapatkanHalaman(id, 3, 100));*/
 
 module.exports = router;

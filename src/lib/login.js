@@ -138,6 +138,8 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
         id: idpendaftar,
         tryPin: pin,
         count: `${job.count}/${job.total}`,
+        berhasil: job.data.filter(d => d.pin.length === 8).length,
+        gagal: job.data.filter(d => d.pin.length !== 8).length,
         sisa: job.sisa,
         err: countError,
         coba: job.coba,
