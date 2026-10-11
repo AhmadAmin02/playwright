@@ -4,7 +4,6 @@ const express = require("express");
 const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
-const fs = require("fs");
 const path = require("node:path");
 const router = express.Router();
 
@@ -108,10 +107,10 @@ router.get("/reset", (req, res) => {
   login.jobs = {};
   activeSlots.clear();
   fs.writeFileSync(
-      path.join(__dirname, `data${nomor}.json`),
-      JSON.stringify([], null, 2),
-      "utf8"
-    );
+    path.join(__dirname, `data${nomor}.json`),
+    JSON.stringify([], null, 2),
+    "utf8",
+  );
   res.json({ status: "ok", message: "Data berhasil direset." });
 });
 // 1. Set global HANYA untuk melacak nomor (1 sampai 5)
@@ -127,12 +126,10 @@ router.get("/sendLogin", (req, res) => {
   const id = generateSequence(prefix);
 
   if (nomor < 1 || nomor > 5) {
-    return res
-      .status(400)
-      .json({
-        status: "error",
-        message: "Parameter nomor tidak valid (Maksimal 5)",
-      });
+    return res.status(400).json({
+      status: "error",
+      message: "Parameter nomor tidak valid (Maksimal 5)",
+    });
   }
 
   if (limit > id.length) {
