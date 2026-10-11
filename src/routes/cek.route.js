@@ -203,7 +203,7 @@ router.get("/app", (req, res) => {
             --bg-color: #0f172a; --card-bg: rgba(30, 41, 59, 0.6);
             --card-inner: rgba(15, 23, 42, 0.4); --border-color: rgba(255, 255, 255, 0.08);
             --text-primary: #f8fafc; --text-secondary: #94a3b8;
-            --accent-color: #3b82f6; --success: #10b981; --danger: #ef4444;
+            --accent-color: #3b82f6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
             --font-mono: 'JetBrains Mono', monospace;
         }
 
@@ -259,9 +259,15 @@ router.get("/app", (req, res) => {
         .form-input { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 14px; border-radius: 8px; font-family: inherit; outline: none; flex: 1; min-width: 130px; font-size: 0.9rem; }
         .form-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
         .form-input::placeholder { color: #64748b; color-scheme: dark; }
+        
+        /* Tombol Submit & Reset */
         .btn-submit { background: var(--success); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
         .btn-submit:hover { background: #059669; transform: translateY(-2px); }
-        .response-text { margin-top: 12px; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); }
+        
+        .btn-reset { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
+        .btn-reset:hover { background: var(--danger); color: #fff; transform: translateY(-2px); border-color: var(--danger); }
+        
+        .response-text { margin-top: 12px; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); display: block;}
 
         /* JSON Result Panel */
         #json-panel { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; display: none; }
@@ -273,7 +279,7 @@ router.get("/app", (req, res) => {
 
         /* Jobs Grid */
         .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem; }
-        .job-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s; }
+        .job-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s, opacity 0.3s; }
         .job-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
         
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
@@ -339,6 +345,7 @@ router.get("/app", (req, res) => {
                 <input type="number" class="form-input" id="inp-page" placeholder="Page" value="1">
                 <input type="number" class="form-input" id="inp-limit" placeholder="Limit" value="100">
                 <button class="btn-submit" id="btn-send-login">Submit (GET)</button>
+                <button class="btn-reset" id="btn-reset-data">Reset</button> <!-- TOMBOL RESET DITAMBAHKAN -->
             </div>
             <div id="login-response" class="response-text"></div>
         </div>
@@ -398,6 +405,54 @@ router.get("/app", (req, res) => {
         });
 
         // =====================================
+        // LOGIKA RESET DATA (/cek/reset) 
+        // =====================================
+        document.getElementById('btn-reset-data').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-reset-data');
+            const respEl = document.getElementById('login-response');
+            const jobsContainer = document.getElementById('jobs-container');
+            
+            // Konfirmasi sebelum mereset
+            if (!confirm("Apakah Anda yakin ingin mereset semua data?")) return;
+
+            btn.disabled = true;
+            btn.innerText = "Mereset...";
+            respEl.innerText = "Mengirim perintah reset...";
+            respEl.style.color = "var(--warning)";
+
+            try {
+                // Fetch ke endpoint reset di server
+                const response = await fetch('/cek/reset');
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    respEl.innerText = "Status: OK (Data berhasil di-reset)";
+                    respEl.style.color = "var(--success)";
+                    
+                    // MENGHAPUS SEMUA KARTU (CARD) DARI LAYAR SECARA INSTAN
+                    jobsContainer.innerHTML = ''; 
+                    
+                    // Meng-nol-kan UI Progress Bar Global
+                    document.getElementById('val-total').innerText = '0';
+                    document.getElementById('val-berhasil').innerText = '0';
+                    document.getElementById('val-gagal').innerText = '0';
+                    document.getElementById('bar-succ').style.width = '0%';
+                    document.getElementById('bar-dang').style.width = '0%';
+                    
+                } else {
+                    respEl.innerText = "Status: ERROR (" + (data.message || 'Gagal Reset') + ")";
+                    respEl.style.color = "var(--danger)";
+                }
+            } catch (error) {
+                respEl.innerText = "Status: ERROR (Gagal terhubung ke endpoint reset)";
+                respEl.style.color = "var(--danger)";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Reset";
+            }
+        });
+
+        // =====================================
         // LOGIKA FETCH DATA.JSON TAMPIL TABEL
         // =====================================
         document.getElementById('btn-load-json').addEventListener('click', async () => {
@@ -431,7 +486,6 @@ router.get("/app", (req, res) => {
         const jobsContainer = document.getElementById('jobs-container');
         const eventSource = new EventSource('/cek');
 
-        // Referensi Global DOM Progress Bar
         const valTotal = document.getElementById('val-total');
         const valBerhasil = document.getElementById('val-berhasil');
         const valGagal = document.getElementById('val-gagal');
@@ -444,16 +498,13 @@ router.get("/app", (req, res) => {
                 : { text: 'STANDBY', class: 'status-idle' };
         }
 
-        // FUNGSI RENDER CARD - Sekarang menerima seluruh objek "response"
         function buildCardHTML(job, response) {
             const status = getStatusInfo(job.status);
             
-            // Mengambil variabel total, berhasil, gagal dari LUAR data (dari root JSON response)
-            
             const berhasil = job.berhasil || 0;
             const gagal = job.gagal || 0;
-            const total = berhasil + gagal; // Total per job, bisa juga ambil dari response.total jika ingin global
-            const calcTotal = total > 0 ? total : 1; // Cegah pembagian dengan nol
+            const total = berhasil + gagal; 
+            const calcTotal = total > 0 ? total : 1; 
 
             const percBerhasil = Math.min((berhasil / calcTotal) * 100, 100);
             const percGagal = Math.min((gagal / calcTotal) * 100, 100);
@@ -500,15 +551,27 @@ router.get("/app", (req, res) => {
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
             
-            // Auto-Update Global Progress Bar
             const gTotal = response.total || 0;
+            
+            // JIKA DATA KOSONG, BERSIHKAN LAYAR
+            if (!response.data || response.data.length === 0) {
+                jobsContainer.innerHTML = '';
+                valTotal.innerText = '0';
+                valBerhasil.innerText = '0';
+                valGagal.innerText = '0';
+                barSucc.style.width = '0%';
+                barDang.style.width = '0%';
+                return;
+            }
+
             const totalStatus = response.data.reduce((acc, curr) => {
-              acc.berhasil += curr.berhasil;
-              acc.gagal += curr.gagal;
+              acc.berhasil += (curr.berhasil || 0);
+              acc.gagal += (curr.gagal || 0);
               return acc;
             }, { berhasil: 0, gagal: 0 });
-            const gBerhasil = totalStatus?.berhasil || 0;
-            const gGagal = totalStatus?.gagal || 0;
+            
+            const gBerhasil = totalStatus.berhasil || 0;
+            const gGagal = totalStatus.gagal || 0;
             const calcGTotal = gTotal > 0 ? gTotal : 1;
 
             valTotal.innerText = gTotal;
@@ -517,19 +580,15 @@ router.get("/app", (req, res) => {
             barSucc.style.width = \`\${Math.min((gBerhasil / calcGTotal) * 100, 100)}%\`;
             barDang.style.width = \`\${Math.min((gGagal / calcGTotal) * 100, 100)}%\`;
 
-            if (!response.data || response.data.length === 0) return;
-
             response.data.forEach(job => {
                 const cardId = 'card-' + job.id;
                 let existingCard = document.getElementById(cardId);
                 
-                // Masukkan "response" root agar bisa diambil stat-nya untuk perbandingan raw
                 const jobString = JSON.stringify({job: job, stat: {b: gBerhasil, g: gGagal, t: gTotal}}); 
                 
                 if (existingCard) {
                     if(existingCard.dataset.raw !== jobString) {
                         existingCard.dataset.raw = jobString;
-                        // Kirim response utuh ke dalam fungsi buildCardHTML
                         existingCard.innerHTML = buildCardHTML(job, response);
                         existingCard.style.order = job.nomor || 0; 
                     }
@@ -539,12 +598,12 @@ router.get("/app", (req, res) => {
                     card.id = cardId;
                     card.dataset.raw = jobString;
                     card.style.order = job.nomor || 0; 
-                    // Kirim response utuh ke dalam fungsi buildCardHTML
                     card.innerHTML = buildCardHTML(job, response);
                     jobsContainer.appendChild(card);
                 }
             });
 
+            // Cleanup cards yang sudah tidak ada di respons
             const currentIds = response.data.map(j => 'card-' + j.id);
             document.querySelectorAll('.job-card').forEach(el => {
                 if (!currentIds.includes(el.id)) el.remove(); 
