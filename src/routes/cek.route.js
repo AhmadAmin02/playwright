@@ -437,6 +437,7 @@ router.get("/app", (req, res) => {
             const status = getStatusInfo(job.status);
             
             // SOLUSI #1: Perbaiki nama variabel menjadi 'total'
+            console.log('Job Data:', job);
             const total = job.total || 0; 
             const calcTotal = total > 0 ? total : 1; // Cegah error dibagi 0 pada styling %
             
