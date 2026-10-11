@@ -68,7 +68,7 @@ async function main(nomor, startsss, endsss, account) {
       nomor // kirim nomor ke login
     );
 
-    if (emitter.listenerCount("stop")) {
+    if (emitter.listenerCount("stop") && global.shouldStop) {
       console.log("Proses dihentikan oleh pengguna.");
       //setStopped(false); // Reset status berhenti setelah proses dihentikan
       throw new Error("Proses dihentikan oleh pengguna.");

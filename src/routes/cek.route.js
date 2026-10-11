@@ -106,6 +106,7 @@ const activeSlots = new Set();
 router.get("/reset", (req, res) => {
   try {
     setStopped(true); // Set status berhenti menjadi true
+    global.shouldStop = true; // Set global flag untuk menghentikan proses login
     return res.json({
       status: "ok",
       message: "Seluruh task aktif dan file data berhasil direset.",
