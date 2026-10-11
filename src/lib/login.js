@@ -66,14 +66,10 @@ async function main(nomor, startsss, endsss, account) {
       nomor, // kirim nomor ke login
     );
     if (pin === "dihentikan") {
-      console.log("job:", job);
-      console.log("jobs:", jobs);
       jobs.length = 0; // Reset jobs array
       Object.keys(job).forEach((key) => {
         delete job[key];
       });
-      console.log("job after reset:", job);
-      console.log("jobs after reset:", jobs);
       break; // Keluar dari loop jika proses dihentikan
     }
 
@@ -141,7 +137,6 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
   try {
     while (true) {
       if (global.shouldStop) {
-        console.log("Proses dihentikan oleh pengguna.");
         //setStopped(false); // Reset status berhenti setelah proses dihentikan
         jar.removeAllCookiesSync();
         g.reset();

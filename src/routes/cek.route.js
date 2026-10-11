@@ -25,7 +25,6 @@ router.get("/", (req, res) => {
       if (global.shouldStop) {
         allData = []; // Kosongkan data jika proses dihentikan
       }
-      console.log("All Data:", allData);
 
       // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
       const berhasil = allData?.berhasil;
@@ -42,7 +41,7 @@ router.get("/", (req, res) => {
         total,
         berhasil,
         gagal,
-        data: allData.filter(item => item != null),
+        data: allData.filter((item) => item != null),
       });
 
       // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
@@ -91,7 +90,7 @@ router.get("/data", (req, res) => {
   const dir = path.join(__dirname, "../lib");
 
   const data = Array.from(
-    { length: 20 },
+    { length: 5 },
     (_, i) => `data${i + 1}.json`,
   ).flatMap((file) => {
     const filePath = path.join(dir, file);
@@ -109,6 +108,19 @@ const activeSlots = new Set();
 router.get("/reset", (req, res) => {
   try {
     global.shouldStop = true; // Set global flag untuk menghentikan proses login
+    const dir = path.join(__dirname, "../lib");
+    let fileTerhapus = 0;
+
+    // Looping untuk mengecek dan menghapus data1.json sampai data20.json
+    for (let i = 1; i <= 5; i++) {
+      const filePath = path.join(dir, `data${i}.json`);
+
+      // Jika file ada, hapus filenya
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        fileTerhapus++;
+      }
+    }
     return res.json({
       status: "ok",
       message: "Seluruh task aktif dan file data berhasil direset.",
@@ -127,7 +139,8 @@ router.get("/sendLogin", (req, res) => {
   const prefix = req.query.prefix || "2505";
   const startDate = req.query.startDate || "01/01/2006";
   const endDate = req.query.endDate || "31/12/2008";
-  const nomor = parseInt(req.query.page) || 1;
+  // req.query.page sekarang bertindak sebagai ID slot spesifik
+  const nomor = parseInt(req.query.page) || 1; 
   const limit = parseInt(req.query.limit) || 100;
 
   const id = generateSequence(prefix);
@@ -145,58 +158,41 @@ router.get("/sendLogin", (req, res) => {
       .json({ status: "error", message: "Limit exceeds available IDs" });
   }
 
-  // 2. Kumpulkan nomor mana saja yang tersedia untuk dijalankan
-  const availableToRun = [];
-  for (let i = 1; i <= nomor; i++) {
-    if (!activeSlots.has(i)) {
-      availableToRun.push(i); // Tambahkan jika nomor 'i' sedang tidak dipakai
-    }
-  }
-
-  // 3. Jika semua nomor yang diminta sedang penuh, tolak request
-  if (availableToRun.length === 0) {
+  // 1. Cek langsung apakah nomor yang direquest sedang dipakai
+  if (activeSlots.has(nomor)) {
     return res.status(429).json({
       status: "warning",
-      message:
-        "Semua nomor (slot) tersebut sedang digunakan oleh proses lain. Harap tunggu.",
+      message: `Nomor (slot) ${nomor} sedang digunakan oleh proses lain. Harap tunggu.`,
     });
   }
 
-  // 4. Jalankan HANYA nomor yang tersedia
-  availableToRun.forEach((i) => {
-    // Tandai nomor ini sedang berjalan
-    activeSlots.add(i);
+  // 2. Tandai nomor ini sedang berjalan
+  activeSlots.add(nomor);
+  console.log(`Memulai proses login untuk nomor: ${nomor} (Prefix: ${prefix})`);
 
-    console.log(`Memulai proses login untuk nomor: ${i} (Prefix: ${prefix})`);
+  // 3. Eksekusi login.main sebagai Promise (hanya untuk nomor ini)
+  login
+    .main(nomor, startDate, endDate, dapatkanHalaman(id, nomor, limit))
+    .then((result) => {
+      // Jika login.main sukses
+      console.log(`Task nomor ${nomor} selesai dengan sukses.`);
+    })
+    .catch((error) => {
+      // Jika login.main error / gagal
+      console.error(`Task nomor ${nomor} mengalami error:`, error);
+    })
+    .finally(() => {
+      // 4. Lepaskan / hapus nomor dari memori agar bisa dipakai lagi nanti
+      activeSlots.delete(nomor);
+      console.log(`Slot nomor ${nomor} telah dikosongkan dan siap digunakan.`);
+    });
 
-    // 5. Eksekusi login.main sebagai Promise
-    login
-      .main(i, startDate, endDate, dapatkanHalaman(id, i, limit))
-      .then((result) => {
-        // Jika login.main sukses
-        console.log(`Task nomor ${i} selesai dengan sukses.`);
-      })
-      .catch((error) => {
-        // Jika login.main error / gagal
-        console.error(`Task nomor ${i} mengalami error:`, error);
-      })
-      .finally(() => {
-        // 6. Lepaskan / hapus nomor dari memori agar bisa dipakai lagi nanti
-        activeSlots.delete(i);
-        console.log(`Slot nomor ${i} telah dikosongkan dan siap digunakan.`);
-      });
-  });
-
-  // 7. Berikan response ke client (hanya memberi tahu task yang berhasil dijalankan)
+  // 5. Berikan response ke client
   res.json({
     status: "ok",
-    message: `Proses login telah diinisiasi.`,
+    message: `Proses login slot ${nomor} telah diinisiasi.`,
     data: {
-      berhasilDijalankan: availableToRun,
-      dilewatiKarenaPenuh:
-        nomor - availableToRun.length > 0
-          ? "Sebagian nomor dilewati karena sedang berjalan."
-          : "Tidak ada",
+      berhasilDijalankan: [nomor]
     },
   });
 });
