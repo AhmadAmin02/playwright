@@ -140,7 +140,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
   let pin = g.next();
   try {
     while (true) {
-      if (emitter.listenerCount("stop")) {
+      if (global.shouldStop) {
         console.log("Proses dihentikan oleh pengguna.");
         //setStopped(false); // Reset status berhenti setelah proses dihentikan
         jar.removeAllCookiesSync();
