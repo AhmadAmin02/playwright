@@ -579,10 +579,10 @@ router.get("/app", (req, res) => {
                 return;
             }
 
-            const gTotal = response.data.reduce((acc, curr) => acc + (curr.berhasil + curr.gagal), 0);
+            const gTotal = response.data.reduce((acc, curr) => acc + (curr?.berhasil + curr?.gagal), 0);
             const totalStatus = response.data.reduce((acc, curr) => {
-              acc.berhasil += curr.berhasil;
-              acc.gagal += curr.gagal;
+              acc.berhasil += curr?.berhasil;
+              acc.gagal += curr?.gagal;
               return acc;
             }, { berhasil: 0, gagal: 0 });
             
