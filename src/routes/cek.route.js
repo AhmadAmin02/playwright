@@ -20,16 +20,16 @@ router.get("/", (req, res) => {
     // Ambil data terbaru dari variabel yang berubah-ubah
     const dat = login.jobs;
     const allData = Object.values(dat).map((item) => item.statusData);
-    const dd = Object.values(dat).map((item) => item.data);
+    /*const dd = Object.values(dat).map((item) => item.data);
     const berhasil = dd.filter((d) => d.pin.length === 8)?.length || 0;
-    const gagal = dd.filter((d) => d.pin.length !== 8)?.length || 0;
+    const gagal = dd.filter((d) => d.pin.length !== 8)?.length || 0;*/
     const total = Object.values(dat).reduce(
       (sum, item) => sum + item.count,
       0,
     );
 
     // Format payload menjadi string JSON
-    const payload = JSON.stringify({ status: "ok", total, berhasil, gagal, data: allData });
+    const payload = JSON.stringify({ status: "ok", total, data: allData });
 
     // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
     res.write(`data: ${payload}\n\n`);
