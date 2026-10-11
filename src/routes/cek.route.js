@@ -20,8 +20,8 @@ router.get("/", (req, res) => {
     // Ambil data terbaru dari variabel yang berubah-ubah
     const data = login.jobs;
     const allData = Object.values(data).map((item) => item.statusData);
-    const berhasil = allData.filter((d) => d.pin.length === 8).length;
-    const gagal = allData.filter((d) => d.pin.length !== 8).length;
+    const berhasil = allData.filter((d) => d.pin.length === 8)?.length || 0;
+    const gagal = allData.filter((d) => d.pin.length !== 8)?.length || 0;
     const total = Object.values(data).reduce(
       (sum, item) => sum + item.count,
       0,
