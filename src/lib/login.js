@@ -68,8 +68,13 @@ async function main(nomor, startsss, endsss, account) {
     );
     if (pin === "dihentikan") {
       console.log("job:", job);
-      jobs[nomor] = []; // Update jobs dengan job yang kosong
       console.log("jobs:", jobs);
+      jobs.length = 0; // Reset jobs array
+      Object.keys(job).forEach((key) => {
+        delete job[key];
+      });
+      console.log("job after reset:", job);
+      console.log("jobs after reset:", jobs);
       break; // Keluar dari loop jika proses dihentikan
     }
 
@@ -95,7 +100,9 @@ async function main(nomor, startsss, endsss, account) {
     console.log(`Selesai ${job.total} akun`);
   } else {
     setStopped(false); // Reset status berhenti setelah proses dihentikan
-    console.log(`Proses dihentikan oleh pengguna. ${job.count} akun telah diproses.`);
+    console.log(
+      `Proses dihentikan oleh pengguna. ${job.count} akun telah diproses.`,
+    );
     return;
   }
 }
