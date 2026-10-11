@@ -23,7 +23,7 @@ router.get("/", (req, res) => {
       const dat = login?.jobs || {};
 
       let allData = Object.values(dat).map((item) => item.statusData);
-      if (emitter.listenerCount("stop") && global.shouldStop) {
+      if (emitter.listenerCount("stop")) {
         allData = []; // Kosongkan data jika proses dihentikan
       }
       console.log("All Data:", allData);
@@ -110,7 +110,6 @@ const activeSlots = new Set();
 router.get("/reset", (req, res) => {
   try {
     setStopped(true); // Set status berhenti menjadi true
-    global.shouldStop = true; // Set global flag untuk menghentikan proses login
     return res.json({
       status: "ok",
       message: "Seluruh task aktif dan file data berhasil direset.",
