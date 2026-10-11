@@ -67,9 +67,9 @@ async function main(nomor, startsss, endsss, account) {
       nomor, // kirim nomor ke login
     );
     if (pin === "dihentikan") {
-      console.log(job);
+      console.log("job:", job);
       jobs[nomor] = []; // Update jobs dengan job yang kosong
-      console.log(jobs);
+      console.log("jobs:", jobs);
       break; // Keluar dari loop jika proses dihentikan
     }
 
@@ -94,7 +94,9 @@ async function main(nomor, startsss, endsss, account) {
   if (!emitter.listenerCount("stop") && !global.shouldStop) {
     console.log(`Selesai ${job.total} akun`);
   } else {
-    return "dihentikan";
+    setStopped(false); // Reset status berhenti setelah proses dihentikan
+    console.log(`Proses dihentikan oleh pengguna. ${job.count} akun telah diproses.`);
+    return;
   }
 }
 
