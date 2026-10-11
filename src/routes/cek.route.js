@@ -5,7 +5,7 @@ const login = require("../lib/login");
 const fs = require("fs");
 const path = require("path");
 const router = express.Router();
-const { setStopped } = require("../lib/state");
+const { emitter, setStopped } = require("../lib/state");
 
 // Asumsi router sudah dideklarasikan
 router.get("/", (req, res) => {
@@ -22,7 +22,11 @@ router.get("/", (req, res) => {
       // PENGAMAN 1: Gunakan fallback {} jika login.jobs belum ada / undefined
       const dat = login?.jobs || {};
 
-      const allData = Object.values(dat).map((item) => item.statusData);
+      let allData = Object.values(dat).map((item) => item.statusData);
+      if (emitter.listenerCount("stop") || global.shouldStop) {
+        allData = []; // Kosongkan data jika proses dihentikan
+      }
+      console.log("All Data:", allData);
 
       // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
       const berhasil = allData?.berhasil;
