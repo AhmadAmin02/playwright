@@ -23,13 +23,9 @@ router.get("/", (req, res) => {
       
       const allData = Object.values(dat).map((item) => item.statusData);
       
-      // Ambil array dari item.data
-      const dd = dat?.data || [];
-      
       // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
-      const berhasil = dd.filter((d) => d?.pin?.length === 8).length || 0;
-      const gagal = dd.filter((d) => d?.pin?.length !== 8).length || 0;
-      console.log(dd);
+      const berhasil = allData?.berhasil;
+      const gagal = allData?.gagal;
       
       const total = Object.values(dat).reduce(
         (sum, item) => sum + (item.count || 0),
@@ -440,8 +436,8 @@ router.get("/app", (req, res) => {
             const total = response.total || 0; 
             const calcTotal = total > 0 ? total : 1; // Cegah pembagian dengan nol
             
-            const berhasil = response.berhasil || 0;
-            const gagal = response.gagal || 0;
+            const berhasil = job.berhasil || 0;
+            const gagal = job.gagal || 0;
 
             const percBerhasil = Math.min((berhasil / calcTotal) * 100, 100);
             const percGagal = Math.min((gagal / calcTotal) * 100, 100);
