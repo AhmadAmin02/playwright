@@ -17,22 +17,39 @@ router.get("/", (req, res) => {
 
   // 2. Buat fungsi untuk mengekstrak dan mengirim data terbaru
   const sendData = () => {
-    // Ambil data terbaru dari variabel yang berubah-ubah
-    const dat = login.jobs;
-    const allData = Object.values(dat).map((item) => item.statusData);
-    /*const dd = Object.values(dat).map((item) => item.data);
-    const berhasil = dd.filter((d) => d.pin.length === 8)?.length || 0;
-    const gagal = dd.filter((d) => d.pin.length !== 8)?.length || 0;*/
-    const total = Object.values(dat).reduce(
-      (sum, item) => sum + item.count,
-      0,
-    );
+    try {
+      // PENGAMAN 1: Gunakan fallback {} jika login.jobs belum ada / undefined
+      const dat = login?.jobs || {};
+      
+      const allData = Object.values(dat).map((item) => item.statusData);
+      
+      // Ambil array dari item.data
+      const dd = Object.values(dat).map((item) => item.data);
+      
+      // PENGAMAN 2: Gunakan d?.pin?.length agar tidak crash jika 'pin' undefined
+      const berhasil = dd.filter((d) => d?.pin?.length === 8).length || 0;
+      const gagal = dd.filter((d) => d?.pin?.length !== 8).length || 0;
+      
+      const total = Object.values(dat).reduce(
+        (sum, item) => sum + (item.count || 0),
+        0
+      );
 
-    // Format payload menjadi string JSON
-    const payload = JSON.stringify({ status: "ok", total, data: allData });
+      // PENGAMAN 3: Masukkan 'berhasil' dan 'gagal' ke dalam payload agar terkirim ke Frontend
+      const payload = JSON.stringify({ 
+        status: "ok", 
+        total, 
+        berhasil, 
+        gagal, 
+        data: allData 
+      });
 
-    // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
-    res.write(`data: ${payload}\n\n`);
+      // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
+      res.write(`data: ${payload}\n\n`);
+    } catch (error) {
+      console.error("Stream Error:", error);
+      // Agar kalaupun ada error logika lain, server tidak mati total
+    }
   };
 
   // Kirim data langsung saat client pertama kali connect
@@ -42,7 +59,6 @@ router.get("/", (req, res) => {
   const intervalId = setInterval(sendData, 1000);
 
   // 4. SANGAT PENTING: Hentikan interval jika client menutup tab browser / disconnect
-  // Jika ini tidak ditambahkan, memori server akan bocor (memory leak)
   req.on("close", () => {
     clearInterval(intervalId);
     res.end();
@@ -83,8 +99,8 @@ router.get("/data", (req, res) => {
 
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
   });
-  const berhasil = data.filter((d) => d.data.pin.length === 8)?.length || 0;
-  const gagal = data.filter((d) => d.data.pin.length !== 8)?.length || 0;
+  const berhasil = data.filter((d) => d?.data?.pin?.length === 8)?.length || 0;
+  const gagal = data.filter((d) => d?.data?.pin?.length !== 8)?.length || 0;
   res.json({ status: "ok", data, total: data.length, berhasil, gagal });
 });
 
