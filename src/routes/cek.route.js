@@ -433,11 +433,11 @@ router.get("/app", (req, res) => {
             const status = getStatusInfo(job.status);
             
             // Mengambil variabel total, berhasil, gagal dari LUAR data (dari root JSON response)
-            const total = job.total || 0; 
-            const calcTotal = total > 0 ? total : 1; // Cegah pembagian dengan nol
             
             const berhasil = job.berhasil || 0;
             const gagal = job.gagal || 0;
+            const total = berhasil + gagal; // Total per job, bisa juga ambil dari response.total jika ingin global
+            const calcTotal = total > 0 ? total : 1; // Cegah pembagian dengan nol
 
             const percBerhasil = Math.min((berhasil / calcTotal) * 100, 100);
             const percGagal = Math.min((gagal / calcTotal) * 100, 100);
@@ -448,7 +448,7 @@ router.get("/app", (req, res) => {
                         <div class="job-meta">
                             <span>#\${job.nomor}</span> • 
                             <span>ID: \${job.id}</span> • 
-                            <span class="badge-pepek">PPK: \${job.tryPin}</span>
+                            <span class="badge-pepek">Try PIN: \${job.tryPin}</span>
                         </div>
                         <h3 class="job-name">\${job.nama}</h3>
                     </div>
@@ -486,8 +486,9 @@ router.get("/app", (req, res) => {
             
             // Auto-Update Global Progress Bar
             const gTotal = response.total || 0;
-            const gBerhasil = response.berhasil || 0;
-            const gGagal = response.gagal || 0;
+            console.log(response);
+            const gBerhasil = response.statusData.berhasil || 0;
+            const gGagal = response.statusData.gagal || 0;
             const calcGTotal = gTotal > 0 ? gTotal : 1;
 
             valTotal.innerText = gTotal;
