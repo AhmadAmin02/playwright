@@ -18,11 +18,11 @@ router.get("/", (req, res) => {
   // 2. Buat fungsi untuk mengekstrak dan mengirim data terbaru
   const sendData = () => {
     // Ambil data terbaru dari variabel yang berubah-ubah
-    const data = login.jobs;
-    const allData = Object.values(data).map((item) => item.statusData);
-    const berhasil = data.filter((d) => d.data.pin.length === 8)?.length || 0;
-    const gagal = data.filter((d) => d.data.pin.length !== 8)?.length || 0;
-    const total = Object.values(data).reduce(
+    const dat = login.jobs;
+    const allData = Object.values(dat).map((item) => item.statusData);
+    const berhasil = dat.data.filter((d) => d.pin.length === 8)?.length || 0;
+    const gagal = dat.data.filter((d) => d.pin.length !== 8)?.length || 0;
+    const total = Object.values(dat).reduce(
       (sum, item) => sum + item.count,
       0,
     );
