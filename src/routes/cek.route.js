@@ -352,10 +352,10 @@ router.get("/app", (req, res) => {
                 const data = await response.json();
 
                 if (data.status === 'ok') {
-                    respEl.innerText = "Status: OK (Data berhasil dikirim via GET)";
+                    respEl.innerText = "Status: OK (" + data.message + ")";
                     respEl.style.color = "var(--success)";
                 } else {
-                    respEl.innerText = "Status: ERROR";
+                    respEl.innerText = "Status: ERROR (" + data.message + ")";
                     respEl.style.color = "var(--danger)";
                 }
             } catch (error) {
