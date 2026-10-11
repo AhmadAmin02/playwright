@@ -20,13 +20,15 @@ router.get("/", (req, res) => {
     // Ambil data terbaru dari variabel yang berubah-ubah
     const data = login.jobs;
     const allData = Object.values(data).map((item) => item.statusData);
+    const berhasil = allData.filter((d) => d.pin.length === 8).length;
+    const gagal = allData.filter((d) => d.pin.length !== 8).length;
     const total = Object.values(data).reduce(
       (sum, item) => sum + item.count,
       0,
     );
 
     // Format payload menjadi string JSON
-    const payload = JSON.stringify({ status: "ok", total, data: allData });
+    const payload = JSON.stringify({ status: "ok", total, berhasil, gagal, data: allData });
 
     // ATURAN SSE: Data HARUS diawali dengan "data: " dan diakhiri dengan "\n\n"
     res.write(`data: ${payload}\n\n`);
@@ -157,7 +159,7 @@ router.get("/sendLogin", (req, res) => {
 });
 
 router.get("/app", (req, res) => {
-  const htmlContent = `
+ const htmlContent = `
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -168,15 +170,10 @@ router.get("/app", (req, res) => {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
         :root {
-            --bg-color: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.6);
-            --card-inner: rgba(15, 23, 42, 0.4);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-color: #3b82f6;
-            --success: #10b981;
-            --danger: #ef4444;
+            --bg-color: #0f172a; --card-bg: rgba(30, 41, 59, 0.6);
+            --card-inner: rgba(15, 23, 42, 0.4); --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc; --text-secondary: #94a3b8;
+            --accent-color: #3b82f6; --success: #10b981; --danger: #ef4444;
             --font-mono: 'JetBrains Mono', monospace;
         }
 
@@ -198,41 +195,40 @@ router.get("/app", (req, res) => {
             background: var(--card-bg); backdrop-filter: blur(16px);
             border: 1px solid var(--border-color); border-radius: 16px;
             padding: 2rem; margin-bottom: 1.5rem;
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;
+            display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;
         }
         .header-info h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
-        .header-info p { margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }
+        .header-info p { margin: 0.5rem 0 1rem 0; color: var(--text-secondary); font-size: 0.9rem; }
         
         .live-indicator {
             width: 8px; height: 8px; background-color: var(--success);
             border-radius: 50%; display: inline-block; margin-right: 6px;
             box-shadow: 0 0 8px var(--success); animation: pulse 1.5s infinite;
         }
-        @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
 
-        .action-area { display: flex; align-items: center; gap: 1.5rem; }
-        .stat-box { text-align: right; }
-        .stat-label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;}
-        .stat-value { font-size: 2.2rem; font-weight: 700; color: var(--accent-color); line-height: 1; margin-top: 4px; font-family: var(--font-mono); }
+        .action-area { display: flex; flex-direction: column; align-items: flex-end; gap: 1rem; width: 100%; max-width: 450px;}
 
-        .btn-fetch { background: var(--accent-color); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; font-family: inherit; height: 42px;}
+        /* PROGRESS BAR GLOBAL */
+        .progress-section { background: var(--card-inner); padding: 16px; width: 100%; border-radius: 12px; border: 1px solid rgba(0,0,0,0.2); box-sizing: border-box; }
+        .progress-labels { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .pl-succ { color: var(--success); } .pl-tot { color: var(--text-primary); text-align: center; flex: 1; } .pl-dang { color: var(--danger); text-align: right; }
+        .progress-labels span b { font-size: 1.1rem; font-family: var(--font-mono); display: block; margin-top: 2px; }
+        
+        .progress-bar-container { width: 100%; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; display: flex; box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); }
+        .bar-succ { height: 100%; background: var(--success); transition: width 0.4s ease; }
+        .bar-dang { height: 100%; background: var(--danger); transition: width 0.4s ease; }
+
+        .btn-fetch { background: var(--accent-color); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
         .btn-fetch:hover { background: #2563eb; transform: translateY(-2px); }
 
-        /* Form Panel (Send Login) */
+        /* Form Panel */
         .form-panel { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 2rem; }
         .form-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #fff; }
         .form-group { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-        .form-input {
-            background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); color: #fff;
-            padding: 10px 14px; border-radius: 8px; font-family: inherit; outline: none; flex: 1; min-width: 130px; font-size: 0.9rem;
-        }
+        .form-input { background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 14px; border-radius: 8px; font-family: inherit; outline: none; flex: 1; min-width: 130px; font-size: 0.9rem; }
         .form-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
         .form-input::placeholder { color: #64748b; color-scheme: dark; }
-        
         .btn-submit { background: var(--success); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: 40px; }
         .btn-submit:hover { background: #059669; transform: translateY(-2px); }
         .response-text { margin-top: 12px; font-size: 0.85rem; font-weight: 600; font-family: var(--font-mono); }
@@ -247,7 +243,7 @@ router.get("/app", (req, res) => {
 
         /* Jobs Grid */
         .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem; }
-        .job-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem; position: relative; transition: transform 0.2s, box-shadow 0.2s; }
+        .job-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s; }
         .job-card:hover { border-color: rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
         
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
@@ -259,17 +255,11 @@ router.get("/app", (req, res) => {
         .status-running { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
         .status-idle { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
         
-        /* === PROGRESS BAR PER CARD === */
+        /* PROGRESS BAR PER CARD */
         .card-progress { background: var(--card-inner); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2); margin-top: 14px; }
-        .progress-labels { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
-        .pl-succ { color: var(--success); }
-        .pl-tot { color: var(--text-secondary); text-align: center; flex: 1; }
-        .pl-dang { color: var(--danger); text-align: right; }
-        .progress-labels b { font-size: 0.95rem; font-family: var(--font-mono); display: block; margin-top: 2px; }
-        
-        .progress-bar-container { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; }
-        .bar-succ { height: 100%; background: var(--success); transition: width 0.4s ease; }
-        .bar-dang { height: 100%; background: var(--danger); transition: width 0.4s ease; }
+        .card-progress .progress-labels { margin-bottom: 8px; font-size: 0.7rem; }
+        .card-progress .progress-labels b { font-size: 0.95rem; }
+        .card-progress .progress-bar-container { height: 8px; border-radius: 4px; }
 
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
         .stat-item { background: var(--card-inner); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 4px; }
@@ -279,7 +269,7 @@ router.get("/app", (req, res) => {
         .card-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px; }
         .footer-text { font-size: 0.75rem; color: var(--text-secondary); font-family: var(--font-mono); }
 
-        @media(max-width: 768px){ .header-card { flex-direction: column; align-items: flex-start; } .action-area { flex-direction: column; align-items: flex-start; gap: 1rem; } .stat-box { text-align: left; } }
+        @media(max-width: 768px){ .header-card { flex-direction: column; } .action-area { max-width: 100%; align-items: flex-start; } }
     </style>
 </head>
 <body>
@@ -290,18 +280,26 @@ router.get("/app", (req, res) => {
             <div class="header-info">
                 <h1>Sistem Monitor</h1>
                 <p><span class="live-indicator"></span> Koneksi stream aktif</p>
+                <button class="btn-fetch" id="btn-load-json">Load Data.json</button>
             </div>
             
             <div class="action-area">
-                <div class="stat-box">
-                    <div class="stat-label">Total Data Keseluruhan</div>
-                    <div class="stat-value" id="global-total">0</div>
+                <!-- PROGRESS BAR GLOBAL -->
+                <div class="progress-section">
+                    <div class="progress-labels">
+                        <span class="pl-succ">Berhasil <b id="val-berhasil">0</b></span>
+                        <span class="pl-tot">Total <b id="val-total">0</b></span>
+                        <span class="pl-dang">Gagal <b id="val-gagal">0</b></span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="bar-succ" id="bar-succ" style="width: 0%"></div>
+                        <div class="bar-dang" id="bar-dang" style="width: 0%"></div>
+                    </div>
                 </div>
-                <button class="btn-fetch" id="btn-load-json">Load Data.json</button>
             </div>
         </div>
 
-        <!-- Form Panel: Send Login (Metode GET) -->
+        <!-- Form Panel: Send Login -->
         <div class="form-panel">
             <div class="form-title">Kirim Data Login (/cek/sendLogin)</div>
             <div class="form-group">
@@ -330,21 +328,7 @@ router.get("/app", (req, res) => {
 
     <script>
         // =====================================
-        // AUTO-FETCH GLOBAL TOTAL ON LOAD
-        // =====================================
-        async function fetchGlobalTotal() {
-            try {
-                const res = await fetch('/cek/data');
-                const result = await res.json();
-                document.getElementById('global-total').innerText = result.total || 0;
-            } catch (err) {
-                console.error("Gagal load total dari data.json", err);
-            }
-        }
-        fetchGlobalTotal(); // Jalankan saat web dibuka
-
-        // =====================================
-        // LOGIKA SUBMIT DATA (/cek/sendLogin) - VIA GET
+        // LOGIKA SUBMIT DATA (/cek/sendLogin) 
         // =====================================
         document.getElementById('btn-send-login').addEventListener('click', async () => {
             const btn = document.getElementById('btn-send-login');
@@ -394,9 +378,6 @@ router.get("/app", (req, res) => {
                 const response = await fetch('/cek/data');
                 const result = await response.json();
                 
-                // Update total jika ada perubahan
-                document.getElementById('global-total').innerText = result.total || 0; 
-
                 tbody.innerHTML = '';
                 result.data.forEach(item => {
                     tbody.innerHTML += \`
@@ -404,7 +385,7 @@ router.get("/app", (req, res) => {
                             <td>#\${item.nomor}</td>
                             <td>\${item.nama}</td>
                             <td>\${item.id}</td>
-                            <td style="color: #93c5fd;">\${item.pin}</td>
+                            <td style="color: #93c5fd;">\${item.ya}</td>
                         </tr>
                     \`;
                 });
@@ -420,23 +401,31 @@ router.get("/app", (req, res) => {
         const jobsContainer = document.getElementById('jobs-container');
         const eventSource = new EventSource('/cek');
 
+        // Referensi Global DOM Progress Bar
+        const valTotal = document.getElementById('val-total');
+        const valBerhasil = document.getElementById('val-berhasil');
+        const valGagal = document.getElementById('val-gagal');
+        const barSucc = document.getElementById('bar-succ');
+        const barDang = document.getElementById('bar-dang');
+
         function getStatusInfo(statusInt) {
-            return (parseInt(statusInt) === 0) 
+            return (parseInt(statusInt) === 1) 
                 ? { text: 'RUNNING', class: 'status-running' }
                 : { text: 'STANDBY', class: 'status-idle' };
         }
 
-        // FUNGSI RENDER CARD (Sekarang ada Progress Bar di Dalamnya)
         function buildCardHTML(job) {
             const status = getStatusInfo(job.status);
             
-            // Perhitungan Progress Bar PER CARD
-            const total = job.total || 1; 
+            // SOLUSI #1: Perbaiki nama variabel menjadi 'total'
+            const total = job.total || 0; 
+            const calcTotal = total > 0 ? total : 1; // Cegah error dibagi 0 pada styling %
+            
             const berhasil = job.berhasil || 0;
             const gagal = job.gagal || 0;
 
-            const percBerhasil = Math.min((berhasil / total) * 100, 100);
-            const percGagal = Math.min((gagal / total) * 100, 100);
+            const percBerhasil = Math.min((berhasil / calcTotal) * 100, 100);
+            const percGagal = Math.min((gagal / calcTotal) * 100, 100);
 
             return \`
                 <div class="card-header">
@@ -444,14 +433,13 @@ router.get("/app", (req, res) => {
                         <div class="job-meta">
                             <span>#\${job.nomor}</span> • 
                             <span>ID: \${job.id}</span> • 
-                            <span class="badge-pepek">Try PIN: \${job.tryPin}</span>
+                            <span class="badge-pepek">PPK: \${job.tryPin}</span>
                         </div>
                         <h3 class="job-name">\${job.nama}</h3>
                     </div>
                     <span class="job-status \${status.class}">\${status.text}</span>
                 </div>
                 
-                <!-- PROGRESS BAR PER CARD -->
                 <div class="card-progress">
                     <div class="progress-labels">
                         <span class="pl-succ">Berhasil <b>\${berhasil}</b></span>
@@ -480,29 +468,45 @@ router.get("/app", (req, res) => {
 
         eventSource.onmessage = (event) => {
             const response = JSON.parse(event.data);
+            
+            // SOLUSI #3: Auto-Update Global Progress Bar
+            const gTotal = response.total || 0;
+            const gBerhasil = response.berhasil || 0;
+            const gGagal = response.gagal || 0;
+            const calcGTotal = gTotal > 0 ? gTotal : 1;
+
+            valTotal.innerText = gTotal;
+            valBerhasil.innerText = gBerhasil;
+            valGagal.innerText = gGagal;
+            barSucc.style.width = \`\${Math.min((gBerhasil / calcGTotal) * 100, 100)}%\`;
+            barDang.style.width = \`\${Math.min((gGagal / calcGTotal) * 100, 100)}%\`;
+
             if (!response.data || response.data.length === 0) return;
 
             response.data.forEach(job => {
                 const cardId = 'card-' + job.id;
-                const existingCard = document.getElementById(cardId);
+                let existingCard = document.getElementById(cardId);
                 const jobString = JSON.stringify(job);
                 
                 if (existingCard) {
                     if(existingCard.dataset.raw !== jobString) {
                         existingCard.dataset.raw = jobString;
                         existingCard.innerHTML = buildCardHTML(job);
+                        // SOLUSI #2: Pastikan CSS 'order' di-apply terus menerus
+                        existingCard.style.order = job.nomor || 0; 
                     }
                 } else {
                     const card = document.createElement('div');
                     card.className = 'job-card';
                     card.id = cardId;
                     card.dataset.raw = jobString;
+                    // SOLUSI #2: Mengunci posisi render CSS Grid via nomor
+                    card.style.order = job.nomor || 0; 
                     card.innerHTML = buildCardHTML(job);
                     jobsContainer.appendChild(card);
                 }
             });
 
-            // Cleanup
             const currentIds = response.data.map(j => 'card-' + j.id);
             document.querySelectorAll('.job-card').forEach(el => {
                 if (!currentIds.includes(el.id)) el.remove(); 
