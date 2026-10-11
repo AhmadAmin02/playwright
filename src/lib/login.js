@@ -30,6 +30,7 @@ let countError = 0;
 
 async function main(nomor, startsss, endsss, account) {
   const accounts = account;
+  console.log("jobs:", jobs);
   
   jobs[nomor] = {
     statusData: {},
@@ -46,6 +47,7 @@ async function main(nomor, startsss, endsss, account) {
   };
   
   const job = jobs[nomor];
+  console.log("job:", job);
   
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
