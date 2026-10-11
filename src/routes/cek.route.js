@@ -23,7 +23,7 @@ router.get("/", (req, res) => {
       const dat = login?.jobs || {};
 
       let allData = Object.values(dat).map((item) => item.statusData);
-      if (emitter.listenerCount("stop") || global.shouldStop) {
+      if (emitter.listenerCount("stop") && global.shouldStop) {
         allData = []; // Kosongkan data jika proses dihentikan
       }
       console.log("All Data:", allData);

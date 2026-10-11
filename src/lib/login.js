@@ -100,6 +100,7 @@ async function main(nomor, startsss, endsss, account) {
     console.log(`Selesai ${job.total} akun`);
   } else {
     setStopped(false); // Reset status berhenti setelah proses dihentikan
+    global.shouldStop = false; // Reset global flag
     console.log(
       `Proses dihentikan oleh pengguna. ${job.count} akun telah diproses.`,
     );
@@ -141,7 +142,7 @@ async function login(idpendaftar, nama, startss, endss, nomor) {
   let pin = g.next();
   try {
     while (true) {
-      if (emitter.listenerCount("stop") || global.shouldStop) {
+      if (emitter.listenerCount("stop") && global.shouldStop) {
         console.log("Proses dihentikan oleh pengguna.");
         //setStopped(false); // Reset status berhenti setelah proses dihentikan
         jar.removeAllCookiesSync();
