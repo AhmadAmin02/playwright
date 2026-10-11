@@ -91,7 +91,9 @@ async function main(nomor, startsss, endsss, account) {
 
     job.timePrev = Date.now() - job.start;
   }
-  if (global.shouldStop) {
+  if (!global.shouldStop) {
+    job.count++;
+    job.sisa = job.total - job.count;
     console.log(`Selesai ${job.total} akun`);
   } else {
     global.shouldStop = false; // Reset global flag setelah proses selesai

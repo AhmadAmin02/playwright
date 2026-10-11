@@ -139,60 +139,71 @@ router.get("/sendLogin", (req, res) => {
   const prefix = req.query.prefix || "2505";
   const startDate = req.query.startDate || "01/01/2006";
   const endDate = req.query.endDate || "31/12/2008";
-  // req.query.page sekarang bertindak sebagai ID slot spesifik
-  const nomor = parseInt(req.query.page) || 1; 
+  
+  // Ubah istilahnya: 'jumlahWorker' (bukan lagi nomor/page)
+  // Misalnya user ketik 3, berarti mau jalankan 3 task sekaligus
+  const jumlahWorker = parseInt(req.query.page) || 1; 
   const limit = parseInt(req.query.limit) || 100;
 
   const id = generateSequence(prefix);
 
-  if (nomor < 1 || nomor > 5) {
+  if (jumlahWorker < 1 || jumlahWorker > 5) {
     return res.status(400).json({
       status: "error",
-      message: "Parameter nomor tidak valid (Maksimal 5)",
+      message: "Parameter jumlah proses tidak valid (Maksimal 5)",
     });
   }
 
   if (limit > id.length) {
-    return res
-      .status(400)
-      .json({ status: "error", message: "Limit exceeds available IDs" });
+    return res.status(400).json({ status: "error", message: "Limit exceeds available IDs" });
   }
 
-  // 1. Cek langsung apakah nomor yang direquest sedang dipakai
-  if (activeSlots.has(nomor)) {
+  // 1. Cari slot Worker yang KOSONG untuk menampung jumlah request
+  const availableWorkers = [];
+  for (let slot = 1; slot <= 5; slot++) { // Anggap maksimal ada 5 slot sistem
+    if (!activeSlots.has(slot)) {
+      availableWorkers.push(slot);
+    }
+    // Jika sudah menemukan slot kosong sebanyak yang direquest, hentikan pencarian
+    if (availableWorkers.length === jumlahWorker) break; 
+  }
+
+  // 2. Jika tidak ada slot sama sekali yang kosong
+  if (availableWorkers.length === 0) {
     return res.status(429).json({
       status: "warning",
-      message: `Nomor (slot) ${nomor} sedang digunakan oleh proses lain. Harap tunggu.`,
+      message: "Semua slot sistem sedang penuh. Harap tunggu.",
     });
   }
 
-  // 2. Tandai nomor ini sedang berjalan
-  activeSlots.add(nomor);
-  console.log(`Memulai proses login untuk nomor: ${nomor} (Prefix: ${prefix})`);
+  // 3. Jalankan task sesuai jumlah slot yang berhasil didapat
+  availableWorkers.forEach((slotID, index) => {
+    activeSlots.add(slotID);
 
-  // 3. Eksekusi login.main sebagai Promise (hanya untuk nomor ini)
-  login
-    .main(nomor, startDate, endDate, dapatkanHalaman(id, nomor, limit))
-    .then((result) => {
-      // Jika login.main sukses
-      console.log(`Task nomor ${nomor} selesai dengan sukses.`);
-    })
-    .catch((error) => {
-      // Jika login.main error / gagal
-      console.error(`Task nomor ${nomor} mengalami error:`, error);
-    })
-    .finally(() => {
-      // 4. Lepaskan / hapus nomor dari memori agar bisa dipakai lagi nanti
-      activeSlots.delete(nomor);
-      console.log(`Slot nomor ${nomor} telah dikosongkan dan siap digunakan.`);
-    });
+    // PAGINASI: Karena kita mau memproses dari awal, 
+    // Worker 1 ambil page 1, Worker 2 ambil page 2, dst.
+    // Kita gunakan (index + 1) sebagai pengganti parameter "page" ke dapatkanHalaman
+    const halamanUntukDiambil = index + 1; 
+    
+    console.log(`Worker Slot ${slotID} memulai proses login untuk Halaman Data ${halamanUntukDiambil}`);
 
-  // 5. Berikan response ke client
+    login
+      .main(slotID, startDate, endDate, dapatkanHalaman(id, halamanUntukDiambil, limit))
+      .then(() => console.log(`Task di Slot ${slotID} selesai.`))
+      .catch((err) => console.error(`Task di Slot ${slotID} error:`, err))
+      .finally(() => {
+        activeSlots.delete(slotID);
+        console.log(`Slot ${slotID} dikosongkan.`);
+      });
+  });
+
   res.json({
     status: "ok",
-    message: `Proses login slot ${nomor} telah diinisiasi.`,
+    message: "Proses login dimulai.",
     data: {
-      berhasilDijalankan: [nomor]
+      workerYangBerjalan: availableWorkers,
+      jumlahDiminta: jumlahWorker,
+      catatan: availableWorkers.length < jumlahWorker ? "Tidak semua worker dijalankan karena sistem penuh." : "OK"
     },
   });
 });
