@@ -67,9 +67,9 @@ async function main(nomor, startsss, endsss, account) {
       nomor, // kirim nomor ke login
     );
     if (pin === "dihentikan") {
-      console.log("Proses dihentikan oleh pengguna.");
-      job = {}; // Hapus referensi job jika proses dihentikan
-      jobs[nomor] = job; // Update jobs dengan job yang kosong
+      console.log(job);
+      jobs[nomor] = []; // Update jobs dengan job yang kosong
+      console.log(jobs);
       break; // Keluar dari loop jika proses dihentikan
     }
 
