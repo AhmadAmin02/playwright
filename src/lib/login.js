@@ -96,7 +96,6 @@ async function main(nomor, startsss, endsss, account) {
     job.sisa = job.total - job.count;
     console.log(`Selesai ${job.total} akun`);
   } else {
-    global.shouldStop = false; // Reset global flag setelah proses selesai
     console.log(
       `Proses dihentikan oleh pengguna. ${job.count} akun telah diproses.`,
     );
@@ -111,24 +110,6 @@ function loadAccounts() {
     if (!Array.isArray(arr)) throw new Error("accounts.json harus berupa array");
     return arr;
     }*/
-  const idd = generateSequence("2506");
-  return idd;
-}
-
-function generateSequence(prefix) {
-  const result = [];
-
-  // Looping dari 1 sampai 9999
-  for (let i = 1; i <= 9999; i++) {
-    // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
-    const suffix = String(i).padStart(4, "0");
-    result.push({
-      id: `${prefix}${suffix}`,
-      nama: `Nama ${suffix}`,
-    });
-  }
-
-  return result;
 }
 
 async function login(idpendaftar, nama, startss, endss, nomor) {

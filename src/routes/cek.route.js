@@ -139,13 +139,14 @@ router.get("/sendLogin", (req, res) => {
   const prefix = req.query.prefix || "2505";
   const startDate = req.query.startDate || "01/01/2006";
   const endDate = req.query.endDate || "31/12/2008";
+  const max = parseInt(req.query.max) || 9999;
   
   // Ubah istilahnya: 'jumlahWorker' (bukan lagi nomor/page)
   // Misalnya user ketik 3, berarti mau jalankan 3 task sekaligus
   const jumlahWorker = parseInt(req.query.page) || 1; 
   const limit = parseInt(req.query.limit) || 100;
 
-  const id = generateSequence(prefix);
+  const id = generateSequence(prefix, max);
 
   if (jumlahWorker < 1 || jumlahWorker > 5) {
     return res.status(400).json({
@@ -366,6 +367,7 @@ router.get("/app", (req, res) => {
                 <input type="date" class="form-input" id="inp-end" title="End Date">
                 <input type="number" class="form-input" id="inp-page" placeholder="Page" value="1">
                 <input type="number" class="form-input" id="inp-limit" placeholder="Limit" value="100">
+                <input type="number" class="form-input" id="inp-max" placeholder="Max" value="10">
                 <button class="btn-submit" id="btn-send-login">Submit (GET)</button>
             </div>
             <div id="login-response" class="response-text"></div>
@@ -406,7 +408,8 @@ router.get("/app", (req, res) => {
                 startDate: document.getElementById('inp-start').value,
                 endDate: document.getElementById('inp-end').value,
                 page: document.getElementById('inp-page').value,
-                limit: document.getElementById('inp-limit').value
+                limit: document.getElementById('inp-limit').value,
+                max: document.getElementById('inp-max').value 
             });
 
             btn.disabled = true;
@@ -415,7 +418,8 @@ router.get("/app", (req, res) => {
             respEl.style.color = "var(--text-secondary)";
 
             try {
-                const response = await fetch(\`/cek/sendLogin?\${params.toString()}\`);
+                // DIUBAH DARI BACKTICK KE PENGGABUNGAN STRING
+                const response = await fetch('/cek/sendLogin?' + params.toString());
                 const data = await response.json();
 
                 if (data.status === 'ok') {
@@ -456,14 +460,12 @@ router.get("/app", (req, res) => {
                     respEl.innerText = "Status: OK (" + (data.message || 'Berhasil di-reset') + ")";
                     respEl.style.color = "var(--success)";
                     
-                    // Hapus seluruh container secara instan
                     document.getElementById('jobs-container').innerHTML = ''; 
                     document.getElementById('val-total').innerText = '0';
                     document.getElementById('val-berhasil').innerText = '0';
                     document.getElementById('val-gagal').innerText = '0';
                     document.getElementById('bar-succ').style.width = '0%';
                     document.getElementById('bar-dang').style.width = '0%';
-
                 } else {
                     respEl.innerText = "Status: ERROR (" + (data.message || 'Gagal Reset') + ")";
                     respEl.style.color = "var(--danger)";
@@ -490,14 +492,13 @@ router.get("/app", (req, res) => {
                 
                 tbody.innerHTML = '';
                 result.data.forEach(item => {
-                    tbody.innerHTML += \`
-                        <tr>
-                            <td>#\${item.nomor}</td>
-                            <td>\${item.nama}</td>
-                            <td>\${item.id}</td>
-                            <td style="color: #93c5fd;">\${item.pin}</td>
-                        </tr>
-                    \`;
+                    // DIUBAH DARI BACKTICK KE PENGGABUNGAN STRING
+                    tbody.innerHTML += '<tr>' +
+                        '<td>#' + item.nomor + '</td>' +
+                        '<td>' + item.nama + '</td>' +
+                        '<td>' + item.id + '</td>' +
+                        '<td style="color: #93c5fd;">' + item.pin + '</td>' +
+                    '</tr>';
                 });
                 panel.style.display = 'block';
             } catch (error) {
@@ -534,43 +535,39 @@ router.get("/app", (req, res) => {
             const percBerhasil = Math.min((berhasil / calcTotal) * 100, 100);
             const percGagal = Math.min((gagal / calcTotal) * 100, 100);
 
-            return \`
-                <div class="card-header">
-                    <div>
-                        <div class="job-meta">
-                            <span>#\${job.nomor}</span> • 
-                            <span>ID: \${job.id}</span> • 
-                            <span class="badge-pepek">Try PIN: \${job.tryPin}</span>
-                        </div>
-                        <h3 class="job-name">\${job.nama}</h3>
-                    </div>
-                    <span class="job-status \${status.class}">\${status.text}</span>
-                </div>
-                
-                <div class="card-progress">
-                    <div class="progress-labels">
-                        <span class="pl-succ">Berhasil <b>\${berhasil}</b></span>
-                        <span class="pl-tot">Total <b>\${total}</b></span>
-                        <span class="pl-dang">Gagal <b>\${gagal}</b></span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="bar-succ" style="width: \${percBerhasil}%"></div>
-                        <div class="bar-dang" style="width: \${percGagal}%"></div>
-                    </div>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-item"><span class="lbl">Progress</span><span class="val">\${job.count}</span></div>
-                    <div class="stat-item"><span class="lbl">Sisa</span><span class="val">\${job.sisa}</span></div>
-                    <div class="stat-item"><span class="lbl">Err / Coba</span><span class="val">\${job.err} / \${job.coba}</span></div>
-                    <div class="stat-item"><span class="lbl">Running</span><span class="val">\${job.running}</span></div>
-                </div>
-
-                <div class="card-footer">
-                    <div class="footer-text">\${job.waktuPrev}</div>
-                    <div class="footer-text">\${job.waktuNext}</div>
-                </div>
-            \`;
+            // DIUBAH DARI BACKTICK KE PENGGABUNGAN STRING
+            return '<div class="card-header">' +
+                '<div>' +
+                    '<div class="job-meta">' +
+                        '<span>#' + job.nomor + '</span> • ' +
+                        '<span>ID: ' + job.id + '</span> • ' +
+                        '<span class="badge-pepek">Try PIN: ' + job.tryPin + '</span>' +
+                    '</div>' +
+                    '<h3 class="job-name">' + job.nama + '</h3>' +
+                '</div>' +
+                '<span class="job-status ' + status.class + '">' + status.text + '</span>' +
+            '</div>' +
+            '<div class="card-progress">' +
+                '<div class="progress-labels">' +
+                    '<span class="pl-succ">Berhasil <b>' + berhasil + '</b></span>' +
+                    '<span class="pl-tot">Total <b>' + total + '</b></span>' +
+                    '<span class="pl-dang">Gagal <b>' + gagal + '</b></span>' +
+                '</div>' +
+                '<div class="progress-bar-container">' +
+                    '<div class="bar-succ" style="width: ' + percBerhasil + '%"></div>' +
+                    '<div class="bar-dang" style="width: ' + percGagal + '%"></div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="stats-grid">' +
+                '<div class="stat-item"><span class="lbl">Progress</span><span class="val">' + job.count + '</span></div>' +
+                '<div class="stat-item"><span class="lbl">Sisa</span><span class="val">' + job.sisa + '</span></div>' +
+                '<div class="stat-item"><span class="lbl">Err / Coba</span><span class="val">' + job.err + ' / ' + job.coba + '</span></div>' +
+                '<div class="stat-item"><span class="lbl">Running</span><span class="val">' + job.running + '</span></div>' +
+            '</div>' +
+            '<div class="card-footer">' +
+                '<div class="footer-text">' + job.waktuPrev + '</div>' +
+                '<div class="footer-text">' + job.waktuNext + '</div>' +
+            '</div>';
         }
 
         eventSource.onmessage = (event) => {
@@ -600,8 +597,9 @@ router.get("/app", (req, res) => {
             valTotal.innerText = gTotal;
             valBerhasil.innerText = gBerhasil;
             valGagal.innerText = gGagal;
-            barSucc.style.width = \`\${Math.min((gBerhasil / calcGTotal) * 100, 100)}%\`;
-            barDang.style.width = \`\${Math.min((gGagal / calcGTotal) * 100, 100)}%\`;
+            // DIUBAH DARI BACKTICK KE PENGGABUNGAN STRING
+            barSucc.style.width = Math.min((gBerhasil / calcGTotal) * 100, 100) + "%";
+            barDang.style.width = Math.min((gGagal / calcGTotal) * 100, 100) + "%";
 
             response.data.forEach(job => {
                 const cardId = 'card-' + job?.id;
@@ -639,13 +637,13 @@ router.get("/app", (req, res) => {
   res.send(htmlContent);
 });
 
-function generateSequence(prefix) {
+function generateSequence(prefix, max) {
   const result = [];
+  // Menghitung berapa digit angka maksimal
+  const maxLength = String(max).length; 
 
-  // Looping dari 0 sampai 9999
-  for (let i = 0; i <= 9999; i++) {
-    // Mengubah angka menjadi string dan menambahkan '0' di depan hingga panjangnya 4 karakter
-    const suffix = String(i).padStart(4, "0");
+  for (let i = 1; i <= max; i++) {
+    const suffix = String(i).padStart(maxLength, "0");
     result.push({
       id: `${prefix}${suffix}`,
       nama: `Nama ${suffix}`,
